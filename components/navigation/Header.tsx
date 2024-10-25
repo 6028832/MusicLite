@@ -1,17 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Linking,
-  View,
-  Text,
-  Image,
-  StyleSheet,
-  Modal,
-  Switch,
-  TextInput,
-  Button,
-  TouchableOpacity,
-  ScrollView,
-} from 'react-native';
+import {Linking,View,Text,Image,StyleSheet,Modal,Switch,TextInput,Button,TouchableOpacity,ScrollView,} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/components/ThemeContext';
 import * as Notifications from 'expo-notifications';
@@ -55,7 +43,7 @@ export default function Header() {
     await AsyncStorage.setItem('notificationsEnabled', !isNotificationsEnabled ? '1' : '0');
     
     if (!isNotificationsEnabled) {
-      // Request permissions and schedule a notification
+      // persmissie notificatie
       const { status } = await Notifications.requestPermissionsAsync();
       if (status === 'granted') {
         await scheduleNotification();
