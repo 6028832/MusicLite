@@ -92,10 +92,10 @@ export default function Header() {
                   </Text>
               </View>
           );
-      case 'Download':
+      case 'layout':
         return (
           <View style={styles.tabContentContainer}>
-            <Text style={[styles.tabContent, { color: 'white' }]}>Manage download settings here.</Text>
+            <Text style={[styles.tabContent, { color: 'white' }]}>Manage layout settings here.</Text>
           </View>
         );
       case 'Storage':
@@ -137,7 +137,7 @@ export default function Header() {
           </View>
           <View style={styles.settingsContent}>
             <View style={styles.tabContainer}>
-              {['General', 'Notifications', 'About', 'Download', 'Storage'].map((tab) => (
+              {['General', 'Notifications', 'About', 'layout', 'Storage'].map((tab) => (
                 <TouchableOpacity
                   key={tab}
                   onPress={() => setSelectedTab(tab)}
