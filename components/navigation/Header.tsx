@@ -1,7 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import {Linking , View, Text, Image, StyleSheet, Modal, Switch, TextInput, Button, TouchableOpacity, ScrollView } from 'react-native';
+import {
+  Linking,
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  Modal,
+  Switch,
+  TextInput,
+  Button,
+  TouchableOpacity,
+  ScrollView,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/components/ThemeContext';
+import * as Notifications from 'expo-notifications';
 
 export default function Header() {
   const theme = useTheme();
@@ -9,13 +22,16 @@ export default function Header() {
   const [selectedTab, setSelectedTab] = useState('General');
   const [isApiEnabled, setIsApiEnabled] = useState(false);
   const [apiCode, setApiCode] = useState('');
+  const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
       const savedApiEnabled = await AsyncStorage.getItem('apiEnabled');
       const savedApiCode = await AsyncStorage.getItem('apiCode');
+      const savedNotificationsEnabled = await AsyncStorage.getItem('notificationsEnabled');
       if (savedApiEnabled) setIsApiEnabled(savedApiEnabled === '1');
       if (savedApiCode) setApiCode(savedApiCode);
+      if (savedNotificationsEnabled) setIsNotificationsEnabled(savedNotificationsEnabled === '1');
     };
     loadSettings();
   }, []);
@@ -33,6 +49,38 @@ export default function Header() {
       console.error('Failed to save API code:', error);
     }
   };
+
+  const toggleNotifications = async () => {
+    setIsNotificationsEnabled((prev) => !prev);
+    await AsyncStorage.setItem('notificationsEnabled', !isNotificationsEnabled ? '1' : '0');
+    
+    if (!isNotificationsEnabled) {
+      // Request permissions and schedule a notification
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status === 'granted') {
+        await scheduleNotification();
+      } else {
+        alert('Notification permission not granted.');
+      }
+    }
+  };
+  // onderste is een test notificatie
+  const scheduleNotification = async () => {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "You've got new music!",
+          body: 'Check out the latest tracks in Music Lite!',
+          data: { someData: 'goes here' },
+        },
+        trigger: { seconds: 1 }, // hoe lang het duurt totdat de notificatie wordt getriggerd nadat je de app heb geopend in de achtergrond
+      });
+      alert('Test notification scheduled!');
+    } catch (error) {
+      console.error('Failed to schedule notification:', error);
+    }
+  };
+  
 
   const renderTabContent = () => {
     switch (selectedTab) {
@@ -64,34 +112,44 @@ export default function Header() {
       case 'Notifications':
         return (
           <View style={styles.tabContentContainer}>
-            <Text style={[styles.tabContent, { color: 'white' }]}>Manage notifications for Music Lite.</Text>
+          <View style={styles.settingRow}>
+            <Text style={[styles.label, { color: 'white' }]}>Notifications Enabled</Text>
+            <Switch value={isNotificationsEnabled} onValueChange={toggleNotifications} />
+          </View>
+          {isNotificationsEnabled ? (
+            <Text style={[styles.savedCode, { color: 'white' }]}>Notifications are enabled</Text>
+          ) : (
+            <Text style={[styles.savedCode, { color: 'white' }]}>Notifications are disabled</Text>
+          )}
+          <Button title="Test Notification" onPress={scheduleNotification} color={theme.colors.primary} />
+        </View>
+        );
+      case 'About':
+        return (
+          <View style={styles.tabContentContainer}>
+            <Text style={[styles.tabContent, { color: 'white' }]}>About Music Lite</Text>
+            <Text style={[styles.tabContent, { color: 'white' }]}>Version 1.0</Text>
+            <Text style={[styles.tabContent, { color: 'white' }]}>Powered by the Genius API</Text>
+            <Text style={[styles.tabContent, { color: 'white' }]}>
+              Discover lyrics and more from your favorite songs.
+            </Text>
+            <Text style={[styles.tabContent, { color: 'white' }]}>
+              For more information, visit{' '}
+              <Text
+                style={{ color: 'blue' }}
+                onPress={() => Linking.openURL('https://genius.com/')}>
+                Genius API general website
+              </Text>
+              ,{' '}
+              <Text
+                style={{ color: 'blue' }}
+                onPress={() => Linking.openURL('https://docs.genius.com/')}>
+                Genius API Documentation
+              </Text>
+              .
+            </Text>
           </View>
         );
-        case 'About':
-          return (
-              <View style={styles.tabContentContainer}>
-                  <Text style={[styles.tabContent, { color: 'white' }]}>About Music Lite</Text>
-                  <Text style={[styles.tabContent, { color: 'white' }]}>Version 1.0</Text>
-                  <Text style={[styles.tabContent, { color: 'white' }]}>Powered by the Genius API</Text>
-                  <Text style={[styles.tabContent, { color: 'white' }]}>
-                      Discover lyrics and more from your favorite songs.
-                  </Text>
-                  <Text style={[styles.tabContent, { color: 'white' }]}>
-                      For more information, visit {' '}
-                      <Text 
-                          style={{ color: 'blue' }} 
-                          onPress={() => Linking.openURL('https://genius.com/')}>
-                          Genius API general website
-                      </Text>
-                      ,{' '}
-                      <Text 
-                          style={{ color: 'blue' }} 
-                          onPress={() => Linking.openURL('https://docs.genius.com/')}>
-                          Genius API Documentation
-                      </Text>.
-                  </Text>
-              </View>
-          );
       case 'layout':
         return (
           <View style={styles.tabContentContainer}>
@@ -123,14 +181,14 @@ export default function Header() {
         visible={isSettingsVisible}
         animationType="slide"
         onRequestClose={() => setIsSettingsVisible(false)}
-        transparent={false} 
+        transparent={false}
       >
         <View style={styles.modalContainer}>
           <View style={styles.navBar}>
             <TouchableOpacity onPress={() => setIsSettingsVisible(false)}>
               <Image
                 style={styles.backIcon}
-                source={require('@/assets/images/back-arrow.png')} 
+                source={require('@/assets/images/back-arrow.png')}
               />
             </TouchableOpacity>
             <Text style={styles.navTitle}>{selectedTab} Settings</Text>
@@ -161,6 +219,7 @@ export default function Header() {
 }
 
 const styles = StyleSheet.create({
+  // ... existing styles ...
   container: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -188,7 +247,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'black', 
+    backgroundColor: 'black',
     justifyContent: 'flex-start',
     padding: 20,
   },
@@ -229,7 +288,7 @@ const styles = StyleSheet.create({
   tabContentContainer: {
     flex: 1,
     padding: 20,
-    backgroundColor: 'black', 
+    backgroundColor: 'black',
   },
   scrollContainer: {
     flex: 1,
@@ -252,11 +311,11 @@ const styles = StyleSheet.create({
   savedCode: {
     fontSize: 16,
     marginTop: 10,
-    color: 'white', 
+    color: 'white',
   },
   tabContent: {
     fontSize: 16,
     marginBottom: 10,
-    color: 'white', 
+    color: 'white',
   },
 });
