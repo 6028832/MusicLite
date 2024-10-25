@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, Modal, Switch, TextInput, Button, TouchableOpacity, ScrollView } from 'react-native';
+import {Linking , View, Text, Image, StyleSheet, Modal, Switch, TextInput, Button, TouchableOpacity, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/components/ThemeContext';
 
@@ -67,13 +67,31 @@ export default function Header() {
             <Text style={[styles.tabContent, { color: 'white' }]}>Manage notifications for Music Lite.</Text>
           </View>
         );
-      case 'About':
-        return (
-          <View style={styles.tabContentContainer}>
-            <Text style={[styles.tabContent, { color: 'white' }]}>About Music Lite</Text>
-            <Text style={[styles.tabContent, { color: 'white' }]}>Version 1.0</Text>
-          </View>
-        );
+        case 'About':
+          return (
+              <View style={styles.tabContentContainer}>
+                  <Text style={[styles.tabContent, { color: 'white' }]}>About Music Lite</Text>
+                  <Text style={[styles.tabContent, { color: 'white' }]}>Version 1.0</Text>
+                  <Text style={[styles.tabContent, { color: 'white' }]}>Powered by the Genius API</Text>
+                  <Text style={[styles.tabContent, { color: 'white' }]}>
+                      Discover lyrics and more from your favorite songs.
+                  </Text>
+                  <Text style={[styles.tabContent, { color: 'white' }]}>
+                      For more information, visit {' '}
+                      <Text 
+                          style={{ color: 'blue' }} 
+                          onPress={() => Linking.openURL('https://genius.com/')}>
+                          Genius API general website
+                      </Text>
+                      ,{' '}
+                      <Text 
+                          style={{ color: 'blue' }} 
+                          onPress={() => Linking.openURL('https://docs.genius.com/')}>
+                          Genius API Documentation
+                      </Text>.
+                  </Text>
+              </View>
+          );
       case 'Download':
         return (
           <View style={styles.tabContentContainer}>
