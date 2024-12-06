@@ -38,13 +38,13 @@ const FileSearchComponent = () => {
           console.log('Asset Info:', assetInfo); 
 
           const title = assetInfo?.title || asset.uri.split('/').pop()?.replace('.mp3', '') || 'Unknown Title';
-          const artist = assetInfo?.artist || 'Unknown Artist'; // Get artist information
+          const artist = assetInfo?.artist || 'Unknown Artist'; 
           const artwork = assetInfo?.artwork || null;
 
           return {
             uri: asset.uri,
             title,
-            artist, // Store the artist
+            artist, 
             artwork,
           };
         }
@@ -62,13 +62,11 @@ const FileSearchComponent = () => {
   const handleSearch = (query: string) => {
     setSearchQuery(query);
 
-    // Filter files by title or artist (case insensitive search)
     const filtered = files.filter((file) => 
       file.title.toLowerCase().includes(query.toLowerCase()) ||
       file.artist.toLowerCase().includes(query.toLowerCase()) // Search by artist as well
     );
 
-    // Sort the filtered files with exact matches on top
     const sorted = filtered.sort((a, b) => {
       const aTitleMatch = a.title.toLowerCase().startsWith(query.toLowerCase());
       const bTitleMatch = b.title.toLowerCase().startsWith(query.toLowerCase());
@@ -76,13 +74,11 @@ const FileSearchComponent = () => {
       const aArtistMatch = a.artist.toLowerCase().startsWith(query.toLowerCase());
       const bArtistMatch = b.artist.toLowerCase().startsWith(query.toLowerCase());
 
-      // Prioritize files where the query matches the beginning of title or artist
       if (aTitleMatch && !bTitleMatch) return -1;
       if (!aTitleMatch && bTitleMatch) return 1;
       if (aArtistMatch && !bArtistMatch) return -1;
       if (!aArtistMatch && bArtistMatch) return 1;
 
-      // For partial matches, keep the current order
       return 0;
     });
 
