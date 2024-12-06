@@ -25,7 +25,6 @@ const FileSearchComponent = () => {
     fetchPermissions();
   }, []);
 
-  
   const fetchFiles = async () => {
     try {
       const media = await MediaLibrary.getAssetsAsync({
@@ -33,18 +32,19 @@ const FileSearchComponent = () => {
         sortBy: [[MediaLibrary.SortBy.creationTime, false]],  
       });
 
-    
       const mp3Files = await Promise.all(media.assets.map(async (asset) => {
         if (asset.uri.endsWith('.mp3')) {
           const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);  
           console.log('Asset Info:', assetInfo); 
 
           const title = assetInfo?.title || asset.uri.split('/').pop()?.replace('.mp3', '') || 'Unknown Title';
+          const artist = assetInfo?.artist || 'Unknown Artist'; // Get artist information
           const artwork = assetInfo?.artwork || null;
 
           return {
             uri: asset.uri,
             title,
+            artist, // Store the artist
             artwork,
           };
         }
@@ -59,14 +59,14 @@ const FileSearchComponent = () => {
     }
   };
 
-
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    const filtered = files.filter((file) => file.title.toLowerCase().includes(query.toLowerCase()));
+    const filtered = files.filter((file) => 
+      file.title.toLowerCase().includes(query.toLowerCase()) ||
+      file.artist.toLowerCase().includes(query.toLowerCase()) // Search by artist as well
+    );
     setFilteredFiles(filtered);
   };
-
-
 
   return (
     <View style={[styles.container, { backgroundColor: isDarkMode ? '#121212' : '#fff' }]}>
@@ -93,9 +93,16 @@ const FileSearchComponent = () => {
                 <Text style={styles.artworkText}>No Artwork</Text>
               </View>
             )}
-            <Text style={[styles.fileTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
-              {item.title}
-            </Text>
+            <View style={styles.textContainer}>
+              <Text style={[styles.fileTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
+                {item.title}
+              </Text>
+              {item.artist !== 'Unknown Artist' && (
+                <Text style={[styles.artist, { color: isDarkMode ? '#fff' : '#000' }]}>
+                  {item.artist}
+                </Text>
+              )}
+            </View>
           </View>
         )}
       />
@@ -146,9 +153,17 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 10,
   },
+  textContainer: {
+    flexDirection: 'column',
+  },
   fileTitle: {
     fontSize: 16,
     fontWeight: 'normal',
+  },
+  artist: {
+    fontSize: 14,
+    fontWeight: 'normal',
+    color: '#888',
   },
 });
 
