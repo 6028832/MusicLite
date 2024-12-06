@@ -61,11 +61,32 @@ const FileSearchComponent = () => {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
+
+    // Filter files by title or artist (case insensitive search)
     const filtered = files.filter((file) => 
       file.title.toLowerCase().includes(query.toLowerCase()) ||
       file.artist.toLowerCase().includes(query.toLowerCase()) // Search by artist as well
     );
-    setFilteredFiles(filtered);
+
+    // Sort the filtered files with exact matches on top
+    const sorted = filtered.sort((a, b) => {
+      const aTitleMatch = a.title.toLowerCase().startsWith(query.toLowerCase());
+      const bTitleMatch = b.title.toLowerCase().startsWith(query.toLowerCase());
+
+      const aArtistMatch = a.artist.toLowerCase().startsWith(query.toLowerCase());
+      const bArtistMatch = b.artist.toLowerCase().startsWith(query.toLowerCase());
+
+      // Prioritize files where the query matches the beginning of title or artist
+      if (aTitleMatch && !bTitleMatch) return -1;
+      if (!aTitleMatch && bTitleMatch) return 1;
+      if (aArtistMatch && !bArtistMatch) return -1;
+      if (!aArtistMatch && bArtistMatch) return 1;
+
+      // For partial matches, keep the current order
+      return 0;
+    });
+
+    setFilteredFiles(sorted);
   };
 
   return (
