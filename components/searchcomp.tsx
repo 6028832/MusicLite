@@ -1,73 +1,103 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  TextInput,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
-import {
-  getRecentSearches,
-  saveSearchQuery,
-  removeSearchQuery,
-} from './navigation/utils/search'; // Adjust the path as needed
+import { View, Text, TextInput, FlatList, StyleSheet, Image, Appearance } from 'react-native';
+import * as MediaLibrary from 'expo-media-library';
 
-const SearchBar = () => {
-  const [query, setQuery] = useState('');
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+const SEARCH_STORAGE_KEY = 'recentSearches';
 
-  // Load recent searches when the component mounts
+const FileSearchComponent = () => {
+  const [files, setFiles] = useState<any[]>([]);  
+  const [searchQuery, setSearchQuery] = useState<string>('');  
+  const [filteredFiles, setFilteredFiles] = useState<any[]>([]);  
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);  
+
+  const isDarkMode = Appearance.getColorScheme() === 'dark';
+
   useEffect(() => {
-    const loadSearches = async () => {
-      const searches = await getRecentSearches();
-      setRecentSearches(searches);
+    const fetchPermissions = async () => {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Permission to access media library is required!');
+        return;
+      }
+      fetchFiles();
     };
-    loadSearches();
+
+    fetchPermissions();
   }, []);
 
-  // Handle saving a new search query
-  const handleSearch = async () => {
-    if (!query.trim()) return;
-    const updatedSearches = await saveSearchQuery(query);
-    setRecentSearches(updatedSearches);
-    setQuery('');
+  
+  const fetchFiles = async () => {
+    try {
+      const media = await MediaLibrary.getAssetsAsync({
+        mediaType: MediaLibrary.MediaType.audio,  
+        sortBy: [[MediaLibrary.SortBy.creationTime, false]],  
+      });
 
-    // Trigger search functionality here
-    console.log(`Searching for: ${query}`);
+    
+      const mp3Files = await Promise.all(media.assets.map(async (asset) => {
+        if (asset.uri.endsWith('.mp3')) {
+          const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);  
+          console.log('Asset Info:', assetInfo); 
+
+          const title = assetInfo?.title || asset.uri.split('/').pop()?.replace('.mp3', '') || 'Unknown Title';
+          const artwork = assetInfo?.artwork || null;
+
+          return {
+            uri: asset.uri,
+            title,
+            artwork,
+          };
+        }
+        return null;
+      }));
+
+      const filteredMp3Files = mp3Files.filter(file => file !== null);
+      setFiles(filteredMp3Files);  
+      setFilteredFiles(filteredMp3Files);  
+    } catch (error) {
+      console.error('Error fetching files:', error);
+    }
   };
 
-  // Handle removing a search query
-  const handleClear = async (item: string) => {
-    const updatedSearches = await removeSearchQuery(item);
-    setRecentSearches(updatedSearches);
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    const filtered = files.filter((file) => file.title.toLowerCase().includes(query.toLowerCase()));
+    setFilteredFiles(filtered);
   };
+
+
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: isDarkMode ? '#121212' : '#fff' }]}>
       <TextInput
-        style={styles.input}
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Search for music..."
-        onSubmitEditing={handleSearch}
+        style={[styles.searchInput, { color: isDarkMode ? '#fff' : '#000' }]}
+        placeholder="Search for mp3 files"
+        placeholderTextColor={isDarkMode ? '#ccc' : '#888'}
+        value={searchQuery}
+        onChangeText={handleSearch}
       />
+
+      <Text style={[styles.filesHeader, { color: isDarkMode ? '#fff' : '#000' }]}>
+        MP3 Files:
+      </Text>
       <FlatList
-        data={recentSearches}
-        keyExtractor={(item, index) => `${item}-${index}`}
+        data={filteredFiles}
+        keyExtractor={(item) => item.uri}
         renderItem={({ item }) => (
-          <View style={styles.searchItem}>
-            <TouchableOpacity onPress={() => setQuery(item)}>
-              <Text style={styles.searchText}>{item}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleClear(item)}>
-              <Text style={styles.clearText}>×</Text>
-            </TouchableOpacity>
+          <View style={styles.fileItem}>
+            {item.artwork ? (
+              <Image source={{ uri: item.artwork }} style={styles.artwork} />
+            ) : (
+              <View style={styles.artworkPlaceholder}>
+                <Text style={styles.artworkText}>No Artwork</Text>
+              </View>
+            )}
+            <Text style={[styles.fileTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
+              {item.title}
+            </Text>
           </View>
         )}
-        ListHeaderComponent={
-          recentSearches.length > 0 && <Text style={styles.header}>Recent Searches</Text>
-        }
       />
     </View>
   );
@@ -76,37 +106,50 @@ const SearchBar = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: '#fff',
+    paddingTop: 50,
+    paddingHorizontal: 20,
   },
-  input: {
+  searchInput: {
     height: 40,
-    borderColor: '#ddd',
+    borderColor: '#ccc',
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    marginBottom: 10,
+    borderRadius: 5,
+    paddingLeft: 10,
+    marginBottom: 20,
   },
-  searchItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 10,
-    borderBottomColor: '#ddd',
-    borderBottomWidth: 1,
-  },
-  searchText: {
-    fontSize: 16,
-  },
-  clearText: {
-    fontSize: 18,
-    color: 'red',
-  },
-  header: {
+  filesHeader: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginTop: 20,
+  },
+  fileItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  artwork: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 10,
+  },
+  artworkPlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#ccc',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  artworkText: {
+    color: '#fff',
+    fontSize: 10,
+  },
+  fileTitle: {
+    fontSize: 16,
+    fontWeight: 'normal',
   },
 });
 
-export default SearchBar;
+export default FileSearchComponent;
