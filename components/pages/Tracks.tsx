@@ -7,7 +7,7 @@ import { useTheme } from "@react-navigation/native";
 import * as MediaLibrary from 'expo-media-library';
 
 export default function Tracks() : any{
-    const [audioFiles, setAudioFiles] = React.useState<Files[]>([]);
+  const [audioFiles, setAudioFiles] = React.useState<Files[]>([]);
   const theme = useTheme()
   const [permissionResponse, requestPermission] = MediaLibrary.usePermissions()
   React.useEffect(() => {
