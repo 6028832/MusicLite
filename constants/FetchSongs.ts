@@ -8,7 +8,7 @@ export const getAllAudioFiles = async (): Promise<Files[]> => {
     first: 50,  // Fetch up to 50 files, for example
   });
 
-  const audioFiles: Files[] = media.assets.map(asset => ({
+  const getAllAudioFiles: Files[] = media.assets.map(asset => ({
     albumId: asset.albumId ?? 0, 
     creationTime: asset.creationTime ?? 0,
     duration: asset.duration ?? "No data on duration",
@@ -21,8 +21,8 @@ export const getAllAudioFiles = async (): Promise<Files[]> => {
     width: asset.width ?? 0
   }));
 
-  console.log(audioFiles);
-  return audioFiles;
+  console.log(getAllAudioFiles);
+  return getAllAudioFiles;
 };
 export const fetchSongs = async (trackName: string, apiCode: string) => {
   try {
