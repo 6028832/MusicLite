@@ -148,6 +148,7 @@ export default function Header() {
         return (
           <View style={styles.tabContentContainer}>
             <Text style={[styles.tabContent, { color: 'white' }]}>Manage storage settings here.</Text>
+            
           </View>
         );
       default:
