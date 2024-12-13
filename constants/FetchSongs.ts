@@ -4,14 +4,15 @@ import Files from '@/interfaces/Files';
 export const getAllAudioFiles = async (): Promise<Files[]> => {
   const media = await MediaLibrary.getAssetsAsync({
     mediaType: 'audio',
-    first: 2,  // Limit the number of files
+    // You can remove or modify the `first` limit based on your needs
+    first: 50,  // Fetch up to 50 files, for example
   });
-  
-  const audioFiles: Files[] = media.assets.map(asset => ({
+
+  const getAllAudioFiles: Files[] = media.assets.map(asset => ({
     albumId: asset.albumId ?? 0, 
     creationTime: asset.creationTime ?? 0,
     duration: asset.duration ?? "No data on duration",
-    filename: asset.filename ?? "Unkown audio file",
+    filename: asset.filename ?? "Unknown audio file",
     height: asset.height ?? 0,
     id: asset.id ?? 0,
     mediaType: 'audio',
@@ -20,6 +21,21 @@ export const getAllAudioFiles = async (): Promise<Files[]> => {
     width: asset.width ?? 0
   }));
 
-  console.log(audioFiles);
-  return audioFiles;
+  console.log(getAllAudioFiles);
+  return getAllAudioFiles;
+};
+export const fetchSongs = async (trackName: string, apiCode: string) => {
+  try {
+    const response = await fetch(`https://api.genius.com/search?q=${trackName}`, {
+      headers: {
+        Authorization: `Bearer ${apiCode}`,
+      },
+    });
+
+    const data = await response.json();
+    return data.response.hits[0]?.result || null;  // Return the first result or null
+  } catch (error) {
+    console.error('Error fetching songs:', error);
+    return null;  // Return null on error
+  }
 };

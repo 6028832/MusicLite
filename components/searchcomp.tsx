@@ -1,103 +1,66 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, FlatList, StyleSheet, Image, Appearance } from 'react-native';
-import * as MediaLibrary from 'expo-media-library';
+import { getAllAudioFiles } from '@/constants/FetchSongs'; // Assuming you have this utility for fetching files
+import Files from '@/interfaces/Files'; // Adjust this import based on your project structure
 
 const SEARCH_STORAGE_KEY = 'recentSearches';
 
 const FileSearchComponent = () => {
-  const [files, setFiles] = useState<any[]>([]);  
+  const [files, setFiles] = useState<Files[]>([]);  
   const [searchQuery, setSearchQuery] = useState<string>('');  
-  const [filteredFiles, setFilteredFiles] = useState<any[]>([]);  
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);  
+  const [filteredFiles, setFilteredFiles] = useState<Files[]>([]);  
 
   const isDarkMode = Appearance.getColorScheme() === 'dark';
 
   useEffect(() => {
-    const fetchPermissions = async () => {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        alert('Permission to access media library is required!');
-        return;
+    const fetchFiles = async () => {
+      try {
+        const audioFiles = await getAllAudioFiles();  // Fetch audio files
+        setFiles(audioFiles);
+        setFilteredFiles(audioFiles);
+      } catch (error) {
+        console.error('Error fetching files:', error);
       }
-      fetchFiles();
     };
 
-    fetchPermissions();
+    fetchFiles();
   }, []);
-
-  const fetchFiles = async () => {
-    try {
-      const media = await MediaLibrary.getAssetsAsync({
-        mediaType: MediaLibrary.MediaType.audio,  
-        sortBy: [[MediaLibrary.SortBy.creationTime, false]],  
-      });
-
-      const mp3Files = await Promise.all(media.assets.map(async (asset) => {
-        if (asset.uri.endsWith('.mp3')) {
-          const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);  
-          console.log('Asset Info:', assetInfo); 
-
-          const title = assetInfo?.title || asset.uri.split('/').pop()?.replace('.mp3', '') || 'Unknown Title';
-          const artist = assetInfo?.artist || 'Unknown Artist'; 
-          const artwork = assetInfo?.artwork || null;
-
-          return {
-            uri: asset.uri,
-            title,
-            artist, 
-            artwork,
-          };
-        }
-        return null;
-      }));
-
-      const filteredMp3Files = mp3Files.filter(file => file !== null);
-      setFiles(filteredMp3Files);  
-      setFilteredFiles(filteredMp3Files);  
-    } catch (error) {
-      console.error('Error fetching files:', error);
-    }
-  };
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
 
     const filtered = files.filter((file) => 
-      file.title.toLowerCase().includes(query.toLowerCase()) ||
-      file.artist.toLowerCase().includes(query.toLowerCase()) // Search by artist as well
+      file.filename.toLowerCase().includes(query.toLowerCase())  // Filter by filename
     );
 
     const sorted = filtered.sort((a, b) => {
-      const aTitleMatch = a.title.toLowerCase().startsWith(query.toLowerCase());
-      const bTitleMatch = b.title.toLowerCase().startsWith(query.toLowerCase());
+      const aTitleMatch = a.filename.toLowerCase().startsWith(query.toLowerCase());
+      const bTitleMatch = b.filename.toLowerCase().startsWith(query.toLowerCase());
 
-      const aArtistMatch = a.artist.toLowerCase().startsWith(query.toLowerCase());
-      const bArtistMatch = b.artist.toLowerCase().startsWith(query.toLowerCase());
-
-      if (aTitleMatch && !bTitleMatch) return -1;
-      if (!aTitleMatch && bTitleMatch) return 1;
-      if (aArtistMatch && !bArtistMatch) return -1;
-      if (!aArtistMatch && bArtistMatch) return 1;
-
-      return 0;
+      return aTitleMatch && !bTitleMatch ? -1 : bTitleMatch && !aTitleMatch ? 1 : 0;
     });
 
     setFilteredFiles(sorted);
+  };
+
+  const removeFileExtension = (filename: string) => {
+    return filename.replace(/\.[^/.]+$/, '');  // Removes file extension
   };
 
   return (
     <View style={[styles.container, { backgroundColor: isDarkMode ? '#121212' : '#fff' }]}>
       <TextInput
         style={[styles.searchInput, { color: isDarkMode ? '#fff' : '#000' }]}
-        placeholder="Search for mp3 files"
+        placeholder="Search files"
         placeholderTextColor={isDarkMode ? '#ccc' : '#888'}
         value={searchQuery}
         onChangeText={handleSearch}
       />
 
       <Text style={[styles.filesHeader, { color: isDarkMode ? '#fff' : '#000' }]}>
-        MP3 Files:
+        Files:
       </Text>
+      
       <FlatList
         data={filteredFiles}
         keyExtractor={(item) => item.uri}
@@ -112,9 +75,9 @@ const FileSearchComponent = () => {
             )}
             <View style={styles.textContainer}>
               <Text style={[styles.fileTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
-                {item.title}
+                {removeFileExtension(item.filename)} {/* Display filename without extension */}
               </Text>
-              {item.artist !== 'Unknown Artist' && (
+              {item.artist && item.artist !== 'Unknown Artist' && (
                 <Text style={[styles.artist, { color: isDarkMode ? '#fff' : '#000' }]}>
                   {item.artist}
                 </Text>
@@ -181,6 +144,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'normal',
     color: '#888',
+    marginTop: 4, // Space between title and artist
   },
 });
 
