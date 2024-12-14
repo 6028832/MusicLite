@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, FlatList, StyleSheet, Image, Appearance } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';  // Import AsyncStorage
 import { getAllAudioFiles } from '@/constants/FetchSongs'; // Assuming you have this utility for fetching files
 import Files from '@/interfaces/Files'; // Adjust this import based on your project structure
 
@@ -24,8 +25,32 @@ const FileSearchComponent = () => {
     };
 
     fetchFiles();
+    loadRecentSearch(); // Load recent search when the component mounts
   }, []);
 
+  // Load recent search from AsyncStorage
+  const loadRecentSearch = async () => {
+    try {
+      const recentSearch = await AsyncStorage.getItem(SEARCH_STORAGE_KEY);
+      if (recentSearch) {
+        setSearchQuery(recentSearch);  // Set search query from AsyncStorage
+        handleSearch(recentSearch);  // Filter files based on the search query
+      }
+    } catch (error) {
+      console.error('Error loading recent search:', error);
+    }
+  };
+
+  // Store recent search in AsyncStorage
+  const storeRecentSearch = async (query: string) => {
+    try {
+      await AsyncStorage.setItem(SEARCH_STORAGE_KEY, query);
+    } catch (error) {
+      console.error('Error storing search query:', error);
+    }
+  };
+
+  // Handle search logic
   const handleSearch = (query: string) => {
     setSearchQuery(query);
 
@@ -41,8 +66,10 @@ const FileSearchComponent = () => {
     });
 
     setFilteredFiles(sorted);
+    storeRecentSearch(query);  // Store the search query in AsyncStorage
   };
 
+  // Remove file extension
   const removeFileExtension = (filename: string) => {
     return filename.replace(/\.[^/.]+$/, '');  // Removes file extension
   };

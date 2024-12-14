@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Button } from 'react-native';
 import { AudioPlayerContext } from '@/components/context/AudioPlayer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Files from '@/interfaces/Files';
@@ -39,7 +39,7 @@ export default function Tracks() {
             filePath: songFilePath, // Use the file path for playing the audio
             artistImage: artistImage,
             songText: songText,
-            artistName: artistName || 'Unknown Artist', // Default to "Unknown Artist" if no name is provided
+            artistName: artistName,
           });
         }
       }
@@ -47,30 +47,53 @@ export default function Tracks() {
       console.log("All tracks:", allTracks);
       setTracks(allTracks);
     })();
-  }, []);
+  }, []); // Empty dependency array to run only once when component mounts
+
+  // Function to clear track data from AsyncStorage
+  const clearTrackData = async (trackId: string) => {
+    try {
+      // Remove specific keys from AsyncStorage
+      await AsyncStorage.removeItem(`artistImage_${trackId}`);
+      await AsyncStorage.removeItem(`songText_${trackId}`);
+      await AsyncStorage.removeItem(`artistName_${trackId}`);
+      await AsyncStorage.removeItem(`songFilePath_${trackId}`);
+
+      // Remove the track from the state as well
+      setTracks(prevTracks => prevTracks.filter(track => track.id !== trackId));
+      
+      console.log(`Data for track ${trackId} cleared.`);
+    } catch (error) {
+      console.error("Error clearing track data:", error);
+    }
+  };
 
   return (
     <View style={styles.container}>
-      {tracks.map(track => (
-        <TouchableOpacity
-          key={track.id}
-          onPress={() => playAudio(track.filePath)}
-          style={styles.trackItem}
-        >
-          <View style={styles.artistImageContainer}>
-            {track.artistImage ? (
-              <Image source={{ uri: track.artistImage }} style={styles.artistImage} />
-            ) : (
-              <Text style={styles.noArtworkText}>No Artwork</Text>
-            )}
-          </View>
+      {tracks.length === 0 ? (
+        <Text style={styles.noTracksText}>No tracks found</Text>
+      ) : (
+        tracks.map(track => (
+          <View key={track.id} style={styles.trackItem}>
+            <TouchableOpacity onPress={() => playAudio(track.filePath)} style={styles.trackDetails}>
+              <View style={styles.artistImageContainer}>
+                {track.artistImage ? (
+                  <Image source={{ uri: track.artistImage }} style={styles.artistImage} />
+                ) : (
+                  <Text style={styles.noArtworkText}>No Artwork</Text>
+                )}
+              </View>
 
-          <View style={styles.trackDetails}>
-            <Text style={styles.trackTitle}>{track.filePath}</Text>
-            <Text style={styles.artistName}>{track.artistName}</Text>
+              <View style={styles.trackDetails}>
+                <Text style={styles.trackTitle}>{track.filePath}</Text>
+                <Text style={styles.artistName}>{track.artistName}</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Clear Data Button */}
+            <Button title="Clear Data" onPress={() => clearTrackData(track.id)} color="#f44336" />
           </View>
-        </TouchableOpacity>
-      ))}
+        ))
+      )}
     </View>
   );
 }
@@ -78,6 +101,11 @@ export default function Tracks() {
 const styles = StyleSheet.create({
   container: {
     padding: 10,
+  },
+  noTracksText: {
+    fontSize: 18,
+    color: 'white',
+    textAlign: 'center',
   },
   trackItem: {
     flexDirection: 'row',
@@ -87,6 +115,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ccc',
     marginBottom: 10,
     backgroundColor: '#1c1c1c',
+    marginBottom: 20,
+    justifyContent: 'space-between',
   },
   artistImageContainer: {
     width: 60,

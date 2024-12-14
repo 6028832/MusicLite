@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {Linking,View,Text,Image,StyleSheet,Modal,Switch,TextInput,Button,TouchableOpacity,ScrollView,} from 'react-native';
+import {Linking,SafeAreaView,View,Text,Image,StyleSheet,Modal,Switch,TextInput,Button,TouchableOpacity,ScrollView,} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/components/ThemeContext';
 import * as Notifications from 'expo-notifications';
@@ -31,7 +31,7 @@ export default function Header() {
 
   const saveApiCode = async () => {
     try {
-      await AsyncStorage.setItem('apiCode', apiCode);
+      await AsyncStorage.setItem('apiCode', apiCode); 
       alert('API code saved!');
     } catch (error) {
       console.error('Failed to save API code:', error);
