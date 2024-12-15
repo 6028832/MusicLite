@@ -12,7 +12,7 @@ export default function Library() {
     const renderContent = () => {
         switch (filter) {
             case "Tracks":
-                return <Tracks />;
+                return <Tracks  />;
             case "Albums":
                 return <Albums />;
             case "Playlists":

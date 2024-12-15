@@ -1,6 +1,6 @@
 import React from 'react';
 import { SafeAreaView, StatusBar } from 'react-native';
-import Tracks from '@/constants/fillininfo';  
+import Tracks from '@/components/pages/Tracks';  
 
 const App: React.FC = () => {
   return (
