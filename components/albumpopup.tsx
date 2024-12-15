@@ -16,7 +16,7 @@ export default function AlbumPopup({
     album: any;
     onClose: () => void;
 }) {
-    if (!album) return null;
+    if (!album) return null;  // Return nothing if no album data is passed
 
     return (
         <Modal
@@ -32,7 +32,7 @@ export default function AlbumPopup({
 
                 <Text style={styles.modalTitle}>{album.title}</Text>
                 <ScrollView style={styles.songList}>
-                    {album.songs.map((song: any) => (
+                    {album.songs?.map((song: any) => (
                         <SongEntry song={song} key={song.id} />
                     ))}
                 </ScrollView>
@@ -47,7 +47,11 @@ function SongEntry({ song }: { song: any }) {
 
     return (
         <View style={styles.songContainer}>
-            <Image source={{ uri: song.thumbnail }} style={styles.thumbnail} />
+            {song.thumbnail ? (
+                <Image source={{ uri: song.thumbnail }} style={styles.thumbnail} />
+            ) : (
+                <View style={styles.thumbnail} />
+            )}
             <View>
                 <Text style={styles.songText}>{song.filename}</Text>
                 <Text style={styles.songDuration}>
@@ -98,6 +102,7 @@ const styles = StyleSheet.create({
         height: 50,
         borderRadius: 8,
         marginRight: 10,
+        backgroundColor: '#ccc', // placeholder for missing image
     },
     songText: {
         color: '#fff',

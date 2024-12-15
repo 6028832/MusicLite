@@ -21,7 +21,7 @@ export default function Home() {
 
   useEffect(() => {
     async function fetchAlbums() {
-      const homeAlbums = await getAlbums(3); // Get 3 albums
+      const homeAlbums = await getAlbums(3);
       setAlbums(homeAlbums);
     }
 
