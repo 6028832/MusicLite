@@ -5,7 +5,7 @@ export const getAllAudioFiles = async (): Promise<Files[]> => {
   const media = await MediaLibrary.getAssetsAsync({
     mediaType: 'audio',
     // You can remove or modify the `first` limit based on your needs
-    first: 50,  // Fetch up to 50 files, for example
+    first: 20,  // Fetch up to 50 files, for example
   });
 
   const getAllAudioFiles: Files[] = media.assets.map(asset => ({
