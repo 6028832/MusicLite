@@ -116,7 +116,7 @@ const FileSearchComponent = () => {
         value={searchQuery}
         onChangeText={handleSearch}
       />
-      {loading && <Text>Loading...</Text>}
+      {loading && <Text style={[styles.loadingText, { color: isDarkMode ? '#fff' : '#000' }]}>Loading...</Text>}
       <FlatList
         data={filteredFiles}
         keyExtractor={(item) => item.uri}
@@ -160,10 +160,9 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
     marginBottom: 20,
   },
-  filesHeader: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 20,
+  loadingText: {
+    fontSize: 16,
+    textAlign: 'center',
   },
   fileItem: {
     flexDirection: 'row',

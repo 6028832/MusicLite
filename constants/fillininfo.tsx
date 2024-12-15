@@ -3,7 +3,7 @@ import { View, Text, Image, Button, StyleSheet, ScrollView } from 'react-native'
 import * as MediaLibrary from 'expo-media-library';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const GeniusAPI_BASE_URL = 'https://api.genius.com'; 
+const GeniusAPI_BASE_URL = 'https://api.genius.com';
 
 export const getApiCode = async () => {
   const apiCode = await AsyncStorage.getItem('apiCode') || '';
@@ -24,7 +24,7 @@ const Tracks: React.FC = () => {
           `${GeniusAPI_BASE_URL}/search?q=${encodeURIComponent(query)}`,
           {
             headers: {
-              Authorization: `Bearer ${geniusAccessToken}`, 
+              Authorization: `Bearer ${geniusAccessToken}`,
             },
           }
         );
@@ -41,7 +41,7 @@ const Tracks: React.FC = () => {
 
       if (hits.length === 0) {
         console.warn('No track found for:', trackTitle, artist);
-        return { artist: 'Unknown Artist', imageUrl: '' };  
+        return { artist: 'Unknown Artist', imageUrl: '' };
       }
 
       const hit = hits[0];
@@ -52,7 +52,7 @@ const Tracks: React.FC = () => {
       };
     } catch (error) {
       console.error('Error fetching Genius track info:', error);
-      return { artist: 'Unknown Artist', imageUrl: '' };  
+      return { artist: 'Unknown Artist', imageUrl: '' };
     }
   };
 
@@ -75,13 +75,14 @@ const Tracks: React.FC = () => {
 
           if (match) {
             trackTitle = match[1].trim();
-            artist = match[2] ? match[2].trim() : '';  
+            artist = match[2] ? match[2].trim() : '';
           } else {
             const parts = asset.filename.split(' - ').map((part) => part.trim());
             trackTitle = parts[0];
-            artist = parts[1] || '';  
+            artist = parts[1] || '';
           }
 
+          // Apply search-like behavior here
           const trackInfo = await fetchTrackInfo(trackTitle, artist);
           return { ...asset, ...trackInfo };
         })
@@ -89,6 +90,7 @@ const Tracks: React.FC = () => {
 
       console.log('Fetched track information:', tracksWithInfo);
       setTracks(tracksWithInfo);
+      await AsyncStorage.setItem('savedTracks', JSON.stringify(tracksWithInfo)); // Save to AsyncStorage
     } catch (error) {
       console.error('Error accessing media library:', error);
     } finally {
@@ -99,7 +101,7 @@ const Tracks: React.FC = () => {
   useEffect(() => {
     const loadApiCode = async () => {
       const apiCode = await getApiCode();
-      setGeniusAccessToken(apiCode); 
+      setGeniusAccessToken(apiCode);
       console.log('Access token set:', apiCode);
     };
 
@@ -113,9 +115,27 @@ const Tracks: React.FC = () => {
     }
   }, [geniusAccessToken]);
 
+  // Load saved tracks from AsyncStorage on page load
+  useEffect(() => {
+    const loadSavedTracks = async () => {
+      try {
+        const storedTracks = await AsyncStorage.getItem('savedTracks');
+        if (storedTracks) {
+          setTracks(JSON.parse(storedTracks));
+          console.log('Loaded tracks from AsyncStorage');
+        }
+      } catch (error) {
+        console.error('Error loading tracks from AsyncStorage:', error);
+      }
+    };
+    loadSavedTracks();
+  }, []);
+
   if (loading) {
     return <Text style={styles.loadingText}>Loading tracks...</Text>;
   }
+
+  const placeholderImage = 'https://via.placeholder.com/100';  // Placeholder image URL
 
   return (
     <View style={styles.container}>
@@ -123,13 +143,16 @@ const Tracks: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {tracks.map((track, index) => (
           <View key={index} style={styles.trackContainer}>
-            {track.imageUrl ? (
-              <Image source={{ uri: track.imageUrl }} style={styles.image} />
-            ) : (
-              <Text style={styles.noImageText}>No image available</Text>
-            )}
-            <Text style={styles.trackTitle}>{track.filename}</Text>
-            <Text style={styles.artistName}>{track.artist}</Text>
+            <View style={styles.trackDetails}>
+              <Image
+                source={{ uri: track.imageUrl || placeholderImage }}  // Use placeholder if no image
+                style={styles.image}
+              />
+              <View style={styles.textContainer}>
+                <Text style={styles.trackTitle}>{track.filename}</Text>
+                <Text style={styles.artistName}>{track.artist}</Text>
+              </View>
+            </View>
           </View>
         ))}
       </ScrollView>
@@ -140,7 +163,7 @@ const Tracks: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'black', 
+    backgroundColor: 'black',
     padding: 10,
   },
   loadingText: {
@@ -149,27 +172,30 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   scrollContainer: {
-    alignItems: 'center',
+    paddingBottom: 10,
   },
   trackContainer: {
     marginBottom: 20,
-    alignItems: 'center',
+  },
+  trackDetails: {
+    flexDirection: 'row',  // Horizontal layout for image and text
+    alignItems: 'center',  // Centers the content vertically within the row
   },
   image: {
     width: 100,
     height: 100,
-    marginBottom: 10,
+    marginRight: 15,  // Space between the image and text
+  },
+  textContainer: {
+    flexDirection: 'column',  // Ensures the text is stacked vertically
   },
   trackTitle: {
     fontWeight: 'bold',
     fontSize: 16,
-    color: 'white',  
+    color: 'white',
   },
   artistName: {
-    color: 'white', 
-  },
-  noImageText: {
-    color: 'white',  
+    color: 'white',
   },
 });
 
