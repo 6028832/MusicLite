@@ -8,5 +8,7 @@ export default interface Files {
     mediaType: 'audio',
     modificationTime: number,
     uri: string,
-    width: number
+    width: number,
+    imageUrl?: string,
+    artist: string,
 }

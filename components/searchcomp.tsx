@@ -18,7 +18,7 @@ const FileSearchComponent = () => {
 
   useEffect(() => {
     const loadApiCode = async () => {
-      const apiCode = await AsyncStorage.getItem('apiCode') || ''; // Get API code from AsyncStorage
+      const apiCode = await AsyncStorage.getItem('apiCode') || '';
       setGeniusAccessToken(apiCode);
     };
 
@@ -27,7 +27,7 @@ const FileSearchComponent = () => {
 
   useEffect(() => {
     if (geniusAccessToken) {
-      fetchFiles(); // Fetch files once we have the Genius API token
+      fetchFiles(); 
     }
   }, [geniusAccessToken]);
 
@@ -45,16 +45,16 @@ const FileSearchComponent = () => {
         const data = await response.json();
         return data.response.hits;
       };
-
+  
       let hits = await searchTrack(trackTitle);
       if (hits.length === 0) {
         hits = await searchTrack(artist);
       }
-
+  
       if (hits.length === 0) {
         return { artist: 'Unknown Artist', imageUrl: '' };
       }
-
+  
       const hit = hits[0];
       return {
         artist: hit.result.primary_artist.name,
@@ -62,10 +62,11 @@ const FileSearchComponent = () => {
       };
     } catch (error) {
       console.error('Error fetching Genius track info:', error);
+      // Return default values if API fails
       return { artist: 'Unknown Artist', imageUrl: '' };
     }
   };
-
+  
   const fetchFiles = async () => {
     setLoading(true);
     try {
@@ -104,7 +105,7 @@ const FileSearchComponent = () => {
     });
 
     setFilteredFiles(sorted);
-    AsyncStorage.setItem(SEARCH_STORAGE_KEY, query);  // Store the search query
+    AsyncStorage.setItem(SEARCH_STORAGE_KEY, query);  
   };
 
   return (
