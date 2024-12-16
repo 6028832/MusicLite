@@ -3,36 +3,34 @@
 import React, {createContext, useState, useContext} from 'react';
 import {Audio} from 'expo-av';
 import Files from '@/interfaces/Files';
+import {MusicPlayerContextInterface} from '@/interfaces/MusicPlayerContext';
 
-const MusicPlayerContext = createContext<{
-  currentTrack: Files | null;
-  isPlaying: boolean;
-  playTrack: (track: Files) => void;
-  togglePlayback: () => void;
-  stopPlayback: () => void;
-}>({
-  currentTrack: null,
-  isPlaying: false,
-  playTrack: (track: Files) => {},
-  togglePlayback: () => {},
-  stopPlayback: () => {},
-});
+const MusicPlayerContext = createContext<
+  MusicPlayerContextInterface | undefined
+>(undefined);
 
-export const MusicPlayerProvider = ({ children }  : any ) => {
-    const [currentTrack, setCurrentTrack] = useState<Files | null>(null);
+export const MusicPlayerProvider = ({children}: any) => {
+  const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [queue, setQueue] = useState<Files[]>([]);
 
-  const playTrack = async (track : any) => {
+  const playTrack = async (trackIndex: number) => {
+    const track = queue[trackIndex];
+    if (!track) {
+      return;
+    }
+
     if (sound) {
       await sound.unloadAsync();
     }
-    const {sound: newSound} = await Audio.Sound.createAsync(
-      {uri: track.uri},
-      {shouldPlay: true}
-    );
+
+    if (!track.uri) {
+      return;
+    }
+    const {sound: newSound} = await Audio.Sound.createAsync({uri: track.uri});
     setSound(newSound);
-    setCurrentTrack(track);
+    setCurrentTrackIndex(trackIndex);
     setIsPlaying(true);
   };
 
@@ -48,6 +46,24 @@ export const MusicPlayerProvider = ({ children }  : any ) => {
     }
   };
 
+  const skipTrack = async () => {
+    if (queue.length > 0) {
+      const nextIndex = (currentTrackIndex + 1) % queue.length;
+      await playTrack(nextIndex);
+    }
+  };
+
+  const previousTrack = async () => {
+    if (queue.length > 0) {
+      const prevIndex = (currentTrackIndex - 1 + queue.length) % queue.length;
+      await playTrack(prevIndex);
+    }
+  };
+
+  const shuffleQueue = () => {
+    setQueue([...queue].sort(() => Math.random() - 0.5));
+  };
+
   const stopPlayback = async () => {
     if (sound) {
       await sound.stopAsync();
@@ -58,11 +74,17 @@ export const MusicPlayerProvider = ({ children }  : any ) => {
   return (
     <MusicPlayerContext.Provider
       value={{
-        currentTrack,
-        isPlaying,
-        playTrack,
+        queue,
+        currentTrackIndex,
+        currentTrack: queue[currentTrackIndex],
+        setQueue,
+        playTrack: (trackIndex: number) => playTrack(trackIndex),
+        skipTrack,
+        previousTrack,
+        shuffleQueue,
         togglePlayback,
         stopPlayback,
+        isPlaying
       }}
     >
       {children}
@@ -70,4 +92,13 @@ export const MusicPlayerProvider = ({ children }  : any ) => {
   );
 };
 
-export const useMusicPlayer = () => useContext(MusicPlayerContext);
+export const useMusicPlayer = (): MusicPlayerContextInterface | undefined => {
+  const context = useContext(MusicPlayerContext);
+  if (!context) {
+    throw new Error('useMusicPlayer must be used within a MusicPlayerProvider');
+  }
+  return {
+    ...context,
+    setQueue: context.setQueue, // Ensure you expose setQueue
+  };
+};

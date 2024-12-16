@@ -1,25 +1,40 @@
 /** @format */
 
 import React, {useState} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {View, Text, TouchableOpacity, StyleSheet, Image} from 'react-native';
 import {useMusicPlayer} from './context/AudioPlayer';
 import FullScreenPlayer from '@/components/FullPlayer';
-import { useTheme } from '@react-navigation/native';
+import {useTheme} from '@react-navigation/native';
+import {MusicPlayerContextInterface} from '@/interfaces/MusicPlayerContext';
 
 const MiniPlayer = () => {
-  const {currentTrack, isPlaying, togglePlayback} = useMusicPlayer();
+  const {queue, currentTrackIndex, togglePlayback, isPlaying} = useMusicPlayer() as MusicPlayerContextInterface;
   const [isFullScreenVisible, setFullScreenVisible] = useState(false);
   const theme = useTheme();
+  const currentTrack = queue[currentTrackIndex];
 
   if (!currentTrack) return null;
 
   return (
     <>
-      <TouchableOpacity onPress={() => setFullScreenVisible(true)}>
-        <View style={styles.container}>
-          <Text style={styles.trackName}>{currentTrack.filename}</Text>
-          <TouchableOpacity onPress={togglePlayback}>
-            <Text>{isPlaying ? 'Pause' : 'Play'}</Text>
+      <TouchableOpacity
+        onPress={() => setFullScreenVisible(true)}
+        style={[styles.container, {backgroundColor: theme.colors.background}]}
+      >
+        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+          <Image source={{uri: currentTrack.imageUrl}} style={styles.image} />
+          <View style={styles.playerbarTextContainer}>
+            <Text style={[styles.trackName, {color: theme.colors.text}]}>
+              {currentTrack.filename}
+            </Text>
+            <Text style={[styles.trackName, {color: theme.colors.text}]}>
+              {currentTrack.artist}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={togglePlayback} style={styles.playButton}>
+            <Text style={[styles.playText, {color: theme.colors.text}]}>
+              {isPlaying ? 'Pause' : 'Play'}
+            </Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -31,27 +46,22 @@ const MiniPlayer = () => {
   );
 };
 
+
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    padding: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    elevation: 5,
+    padding: 16,
+    backgroundColor: '#f9f9f9',
+    borderTopWidth: 1,
+    borderTopColor: '#ccc',
   },
-  trackName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  control: {
-    fontSize: 16,
-    color: 'blue',
-  },
+  trackName: {fontSize: 16, fontWeight: 'bold', flex: 1},
+  playButton: {marginLeft: 16},
+  playText: { fontSize: 14 },
+  image: { width: 50, height: 50, borderRadius: 8 }, 
+  playerbarTextContainer: { flex: 1, marginHorizontal: 16 },
 });
 
 export default MiniPlayer;

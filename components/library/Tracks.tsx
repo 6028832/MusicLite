@@ -9,11 +9,13 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  FlatList,
 } from 'react-native';
 import {useMusicPlayer} from '@/components/context/AudioPlayer';
 import * as MediaLibrary from 'expo-media-library';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useTheme} from '@/hooks/useTheme';
+import Files from '@/interfaces/Files';
 
 const GeniusAPI_BASE_URL = 'https://api.genius.com';
 
@@ -24,12 +26,13 @@ export const getApiCode = async () => {
 };
 
 export default function Tracks() {
-  const [tracks, setTracks] = useState<any[]>([]);
+  const [tracks, setTracks] = useState<Files[]>([]);
   const [loading, setLoading] = useState(false);
+  const musicPlayer = useMusicPlayer();
+  const theme = useTheme();
   const [geniusAccessToken, setGeniusAccessToken] = useState<string>('');
-  const {playTrack} = useMusicPlayer();
-  const { colors } = useTheme('dark');
-  
+  const playTrack = musicPlayer?.playTrack;
+
   const fetchTrackInfo = async (trackTitle: string, artist: string) => {
     console.log(`Fetching track info for: ${trackTitle} by ${artist}`);
     try {
@@ -55,7 +58,7 @@ export default function Tracks() {
 
       if (hits.length === 0) {
         console.warn('No track found for:', trackTitle, artist);
-        return {artist: 'Unknown Artist', imageUrl: ''};
+        return { artist: 'Unknown Artist', imageUrl: '' };
       }
 
       const hit = hits[0];
@@ -68,7 +71,7 @@ export default function Tracks() {
       };
     } catch (error) {
       console.error('Error fetching Genius track info:', error);
-      return {artist: 'Unknown Artist', imageUrl: ''};
+      return { artist: 'Unknown Artist', imageUrl: '' };
     }
   };
 
@@ -106,7 +109,10 @@ export default function Tracks() {
 
       console.log('Fetched track information:', tracksWithInfo);
       setTracks(tracksWithInfo);
-      await AsyncStorage.setItem('savedTracks', JSON.stringify(tracksWithInfo)); // Save to AsyncStorage
+      await AsyncStorage.setItem('savedTracks', JSON.stringify(tracksWithInfo));
+      if (musicPlayer) {
+        musicPlayer.setQueue(tracksWithInfo);
+      }
     } catch (error) {
       console.error('Error accessing media library:', error);
     } finally {
@@ -149,45 +155,53 @@ export default function Tracks() {
 
   const placeholderImage = 'https://via.placeholder.com/100';
 
+  const renderTrack = ({item, index}: {item: Files; index: number}) => (
+    <TouchableOpacity
+      style={styles.trackContainer}
+      onPress={() => playTrack && playTrack(index)}
+    >
+      <View style={styles.trackDetails}>
+        <Image
+          source={{uri: item.imageUrl || placeholderImage}}
+          style={styles.image}
+        />
+        <View style={styles.textContainer}>
+          <Text style={[styles.trackTitle, {color: theme.colors.text}]}>
+            {item.filename || 'Unknown Title'}
+          </Text>
+          <Text style={[styles.artistName, {color: theme.colors.text}]}>
+            {item.artist || 'Unknown Artist'}
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => {
+            Alert.alert(
+              item.filename || 'Track Info',
+              `Artist: ${item.artist || 'Unknown'}`,
+              [{text: 'OK'}],
+              {cancelable: true}
+            );
+          }}
+        >
+          <Image
+            source={require('@/assets/images/settings.png')}
+            style={styles.settingsIcon}
+          />
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+
   return loading ? (
     <Text style={styles.loadingText}>Loading tracks...</Text>
   ) : (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {tracks.map((track, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.trackContainer}
-            onPress={() => playTrack(track)} // Play track on press
-          >
-            <View style={styles.trackDetails}>
-              <Image
-                source={{uri: track.imageUrl || placeholderImage}}
-                style={styles.image}
-              />
-              <View style={styles.textContainer}>
-                <Text style={styles.trackTitle}>{track.filename}</Text>
-                <Text style={styles.artistName}>{track.artist}</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => {
-                  Alert.alert(
-                    track.filename,
-                    `Artist: ${track.artist}`,
-                    [{text: 'OK'}],
-                    {cancelable: true}
-                  );
-                }}
-              >
-                <Image
-                  source={require('@/assets/images/settings.png')}
-                  style={styles.settingsIcon}
-                />
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <FlatList
+        data={tracks}
+        keyExtractor={(item, index) => index.toString()}
+        renderItem={renderTrack}
+        contentContainerStyle={styles.flatListContainer}
+      />
     </View>
   );
 }
@@ -195,46 +209,57 @@ export default function Tracks() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'black',
+    backgroundColor: '#000000',
     padding: 10,
   },
   loadingText: {
-    color: 'white',
+    fontSize: 16,
     textAlign: 'center',
-    fontSize: 18,
+    marginTop: 20,
+    color: '#888',
   },
-  scrollContainer: {
-    paddingBottom: 10,
+  flatListContainer: {
+    paddingBottom: 20,
   },
   trackContainer: {
-    marginBottom: 20,
-    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    padding: 10,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    backgroundColor: '#282828',
   },
   trackDetails: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    flex: 1,
   },
   image: {
     width: 50,
     height: 50,
+    borderRadius: 5,
     marginRight: 10,
   },
   textContainer: {
     flex: 1,
-    flexDirection: 'column',
   },
   trackTitle: {
-    fontWeight: 'bold',
-    fontSize: 14,
-    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
   },
   artistName: {
-    color: 'white',
+    fontSize: 14,
+    color: '#555',
   },
   settingsIcon: {
     width: 20,
     height: 20,
-    marginLeft: 10,
+    tintColor: '#888',
   },
 });

@@ -18,7 +18,9 @@ export const getAllAudioFiles = async (): Promise<Files[]> => {
     mediaType: 'audio',
     modificationTime: asset.modificationTime ?? 0,
     uri: asset.uri,
-    width: asset.width ?? 0
+    width: asset.width ?? 0,
+    imageUrl: '',  // Add a default or fetch the actual image URL if available
+    artist: ''     // Add a default or fetch the actual artist if available
   }));
 
   console.log(getAllAudioFiles);
