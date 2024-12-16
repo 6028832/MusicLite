@@ -5,6 +5,7 @@ import Albums from "@/components/pages/Albums";
 import Playlists from "@/components/pages/Playlists";
 import Artists from "@/components/pages/Artists";
 import Folders from "@/components/pages/Folders";
+import CreatePlaylist from "@/components/pages/createPlaylist";
 
 export default function Library() {
     const [filter, setFilter] = useState("Tracks");
@@ -21,6 +22,8 @@ export default function Library() {
                 return <Artists />;
             case "Folders":
                 return <Folders />;
+            case "create":
+                return <CreatePlaylist />;
             default:
                 return null;
         }
@@ -48,6 +51,9 @@ export default function Library() {
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.button} onPress={() => setFilter("Folders")}>
                         <Text style={styles.buttonText}>Folders</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.button} onPress={() => setFilter("Create")}>
+                        <Text style={styles.buttonText}>Create</Text>
                     </TouchableOpacity>
                 </ScrollView>
             </View>

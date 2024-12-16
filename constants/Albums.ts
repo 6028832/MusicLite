@@ -1,8 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export class Albums {
+export class AlbumsManager {
     constructor() { }
 
+    async firstStart(){
+        this.save("allAlbums", []);
+    }
+    
     private async save(key: string, data: any) {
         try {
             await AsyncStorage.setItem(key, JSON.stringify(data));
@@ -12,7 +16,7 @@ export class Albums {
 
     }
 
-    private async fetch(key: string): Promise<string | null | undefined> {
+    private async fetch(key: string) {
         try {
             const data = await AsyncStorage.getItem(key);
             return data ? JSON.parse(data) : null;
@@ -23,7 +27,7 @@ export class Albums {
     }
 
 
-    async getAllAlbums() {
+    async getAllAlbums(){
         // a few things in this class are gonna be based on this, so thats why
         return this.fetch("allAlbums")
     }
