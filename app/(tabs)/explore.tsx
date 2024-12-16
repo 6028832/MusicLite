@@ -1,4 +1,4 @@
-import { useTheme } from '@/components/ThemeContext';
+import { useTheme } from '@/hooks/useTheme';
 import { StyleSheet, View, Text } from 'react-native';
 import FileSearchComponent from '../../components/searchcomp'; 
 export default function TabTwoScreen() {

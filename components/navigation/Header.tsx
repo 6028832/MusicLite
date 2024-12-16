@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {Linking,SafeAreaView,View,Text,Image,StyleSheet,Modal,Switch,TextInput,Button,TouchableOpacity,ScrollView,} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useTheme } from '@/components/ThemeContext';
+import { useTheme } from '@/hooks/useTheme';
 import * as Notifications from 'expo-notifications';
 
 export default function Header() {
@@ -61,7 +61,7 @@ export default function Header() {
           body: 'Check out the latest tracks in Music Lite!',
           data: { someData: 'goes here' },
         },
-        trigger: { seconds: 1 }, // hoe lang het duurt totdat de notificatie wordt getriggerd nadat je de app heb geopend in de achtergrond
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1 }, // hoe lang het duurt totdat de notificatie wordt getriggerd nadat je de app heb geopend in de achtergrond
       });
       alert('Test notification scheduled!');
     } catch (error) {
@@ -94,7 +94,7 @@ export default function Header() {
             ) : (
               <Text style={[styles.savedCode, { color: 'white' }]}>No API code saved</Text>
             )}
-            <Button title="Save API Code" onPress={saveApiCode} color={theme.colors.primary} />
+            <Button title="Save API Code" onPress={saveApiCode} color={theme.colors.text} />
           </View>
         );
       case 'Notifications':
@@ -109,7 +109,7 @@ export default function Header() {
           ) : (
             <Text style={[styles.savedCode, { color: 'white' }]}>Notifications are disabled</Text>
           )}
-          <Button title="Test Notification" onPress={scheduleNotification} color={theme.colors.primary} />
+          <Button title="Test Notification" onPress={scheduleNotification} color={theme.colors.text} />
         </View>
         );
       case 'About':
@@ -189,7 +189,7 @@ export default function Header() {
                   onPress={() => setSelectedTab(tab)}
                   style={[
                     styles.tabButton,
-                    selectedTab === tab && { backgroundColor: theme.colors.primary },
+                    selectedTab === tab && { backgroundColor: theme.colors.text },
                   ]}
                 >
                   <Text style={styles.tabText}>{tab}</Text>

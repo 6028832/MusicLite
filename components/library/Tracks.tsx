@@ -1,9 +1,19 @@
 /** @format */
 
 import React, {useState, useEffect} from 'react';
-import {View, Text, Image, StyleSheet, ScrollView} from 'react-native';
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
+import {useMusicPlayer} from '@/components/context/AudioPlayer';
 import * as MediaLibrary from 'expo-media-library';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {useTheme} from '@/hooks/useTheme';
 
 const GeniusAPI_BASE_URL = 'https://api.genius.com';
 
@@ -13,11 +23,13 @@ export const getApiCode = async () => {
   return apiCode;
 };
 
-const Tracks: React.FC = () => {
+export default function Tracks() {
   const [tracks, setTracks] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [geniusAccessToken, setGeniusAccessToken] = useState<string>('');
-
+  const {playTrack} = useMusicPlayer();
+  const { colors } = useTheme('dark');
+  
   const fetchTrackInfo = async (trackTitle: string, artist: string) => {
     console.log(`Fetching track info for: ${trackTitle} by ${artist}`);
     try {
@@ -135,33 +147,50 @@ const Tracks: React.FC = () => {
     loadSavedTracks();
   }, []);
 
-  if (loading) {
-    return <Text style={styles.loadingText}>Loading tracks...</Text>;
-  }
+  const placeholderImage = 'https://via.placeholder.com/100';
 
-  const placeholderImage = 'https://via.placeholder.com/100'; // Placeholder image URL
-
-  return (
+  return loading ? (
+    <Text style={styles.loadingText}>Loading tracks...</Text>
+  ) : (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {tracks.map((track, index) => (
-          <View key={index} style={styles.trackContainer}>
+          <TouchableOpacity
+            key={index}
+            style={styles.trackContainer}
+            onPress={() => playTrack(track)} // Play track on press
+          >
             <View style={styles.trackDetails}>
               <Image
-                source={{uri: track.imageUrl || placeholderImage}} // Use placeholder if no image
+                source={{uri: track.imageUrl || placeholderImage}}
                 style={styles.image}
               />
               <View style={styles.textContainer}>
                 <Text style={styles.trackTitle}>{track.filename}</Text>
                 <Text style={styles.artistName}>{track.artist}</Text>
               </View>
+              <TouchableOpacity
+                onPress={() => {
+                  Alert.alert(
+                    track.filename,
+                    `Artist: ${track.artist}`,
+                    [{text: 'OK'}],
+                    {cancelable: true}
+                  );
+                }}
+              >
+                <Image
+                  source={require('@/assets/images/settings.png')}
+                  style={styles.settingsIcon}
+                />
+              </TouchableOpacity>
             </View>
-          </View>
+          </TouchableOpacity>
         ))}
       </ScrollView>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -179,27 +208,33 @@ const styles = StyleSheet.create({
   },
   trackContainer: {
     marginBottom: 20,
+    width: '100%',
   },
   trackDetails: {
-    flexDirection: 'row', // Horizontal layout for image and text
-    alignItems: 'center', // Centers the content vertically within the row
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   image: {
-    width: 100,
-    height: 100,
-    marginRight: 15, // Space between the image and text
+    width: 50,
+    height: 50,
+    marginRight: 10,
   },
   textContainer: {
-    flexDirection: 'column', // Ensures the text is stacked vertically
+    flex: 1,
+    flexDirection: 'column',
   },
   trackTitle: {
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 14,
     color: 'white',
   },
   artistName: {
     color: 'white',
   },
+  settingsIcon: {
+    width: 20,
+    height: 20,
+    marginLeft: 10,
+  },
 });
-
-export default Tracks;

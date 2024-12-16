@@ -1,38 +1,73 @@
 /** @format */
 
+import React, {createContext, useState, useContext} from 'react';
 import {Audio} from 'expo-av';
-import React, { useState } from 'react';
-import { createContext } from 'react';
-import { ReactNode } from 'react';
+import Files from '@/interfaces/Files';
 
-export const AudioPlayerContext = React.createContext({
-  playAudio: async (uri: string) => {},
-  pauseAudio: async () => {},
-  stopAudio: async () => {},
+const MusicPlayerContext = createContext<{
+  currentTrack: Files | null;
+  isPlaying: boolean;
+  playTrack: (track: Files) => void;
+  togglePlayback: () => void;
+  stopPlayback: () => void;
+}>({
+  currentTrack: null,
+  isPlaying: false,
+  playTrack: (track: Files) => {},
+  togglePlayback: () => {},
+  stopPlayback: () => {},
 });
 
-
-export function AudioPlayerProvider({children}: {children: ReactNode}) {
+export const MusicPlayerProvider = ({ children }  : any ) => {
+    const [currentTrack, setCurrentTrack] = useState<Files | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
 
-  const playAudio = async (uri: any) => {
-    if (sound) await sound.unloadAsync();
-    const {sound: newSound} = await Audio.Sound.createAsync({uri});
+  const playTrack = async (track : any) => {
+    if (sound) {
+      await sound.unloadAsync();
+    }
+    const {sound: newSound} = await Audio.Sound.createAsync(
+      {uri: track.uri},
+      {shouldPlay: true}
+    );
     setSound(newSound);
-    await newSound.playAsync();
+    setCurrentTrack(track);
+    setIsPlaying(true);
   };
 
-  const pauseAudio = async () => {
-    if (sound) await sound.pauseAsync();
+  const togglePlayback = async () => {
+    if (sound) {
+      if (isPlaying) {
+        await sound.pauseAsync();
+        setIsPlaying(false);
+      } else {
+        await sound.playAsync();
+        setIsPlaying(true);
+      }
+    }
   };
 
-  const stopAudio = async () => {
-    if (sound) await sound.stopAsync();
+  const stopPlayback = async () => {
+    if (sound) {
+      await sound.stopAsync();
+      setIsPlaying(false);
+    }
   };
 
   return (
-    <AudioPlayerContext.Provider value={{playAudio, pauseAudio, stopAudio}}>
+    <MusicPlayerContext.Provider
+      value={{
+        currentTrack,
+        isPlaying,
+        playTrack,
+        togglePlayback,
+        stopPlayback,
+      }}
+    >
       {children}
-    </AudioPlayerContext.Provider>
+    </MusicPlayerContext.Provider>
   );
-}
+};
+
+export const useMusicPlayer = () => useContext(MusicPlayerContext);

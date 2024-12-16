@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import {PlaylistManager} from '@/constants/Playlists';
 import {MasterPlaylist} from '@/interfaces/MasterPlaylists';
-import {useTheme} from '@/components/ThemeContext';
+import {useTheme} from '@/hooks/useTheme';
 
 export default function Playlists() {
   const [playlists, setPlaylists] = useState<MasterPlaylist[]>([]);

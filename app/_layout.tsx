@@ -5,7 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import Header from "@/components/navigation/Header";
-import { ThemeProvider, useTheme } from '@/components/ThemeContext'; // Import the ThemeProvider and useTheme
+import { ThemeProvider, useTheme } from '@/hooks/useTheme'; // Import the ThemeProvider and useTheme
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -25,21 +25,22 @@ export default function Layout() {
     return null;
   }
 
-  return (
-    <ThemeProvider>
-      <ThemedApp />
-    </ThemeProvider>
-  );
+return (
+  <ThemeProvider>
+    <ThemedApp />
+  </ThemeProvider>
+);
+
 }
 
 function ThemedApp() {
-  const theme = useTheme(); 
+  const {theme, colors} = useTheme();
 
   return (
     <NavigationThemeProvider value={theme}>
       <Header />
       <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{headerShown: false}} />
         <Stack.Screen name="+not-found" />
       </Stack>
     </NavigationThemeProvider>
