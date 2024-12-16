@@ -1,13 +1,18 @@
 import { PlaylistManager } from '@/constants/Playlists';
 import { SafeAreaView, ScrollView, StyleSheet, TextInput, Text, Button} from 'react-native';
 import { useState, useEffect } from 'react';
+import { MasterPlaylist } from '@/interfaces/MasterPlaylists';
 
 export default function CreatePlaylist(): any {
-    const [playlistName, setPlaylistName] = useState<String>();    
+    const [playlistName, setPlaylistName] = useState<MasterPlaylist | undefined | string>();    
     const manager = new PlaylistManager();
     
     function createPlaylist(){
-        manager.createNewplaylist(playlistName, [''])
+        if (typeof playlistName === 'string') {
+            manager.createNewplaylist(playlistName, ['']);
+        } else {
+            console.error('Playlist name must be a string');
+        }
     }
     
 

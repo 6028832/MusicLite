@@ -32,10 +32,11 @@ export class PlaylistManager {
     private async fetch(key: string) {
         try {
             const data = await AsyncStorage.getItem(key);
-            return data ? JSON.parse(data) : null;
+            return data ? JSON.parse(data) : [];
         } catch {
             console.error('cd git-blame-someone-else "Martijn Heins<6026961mborijnland>')
             // https://github.com/jayphelps/git-blame-someone-else
+            return [];
         }
     }
 

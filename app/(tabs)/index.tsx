@@ -2,16 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Tracks from '@/components/library/Tracks';  
-// Function to clear track data
-const clearTrackData = async (trackId: string) => {
-  try {
-    await AsyncStorage.removeItem(`artistImage_${trackId}`);
-    await AsyncStorage.removeItem(`songText_${trackId}`);
-    console.log(`Data for track ${trackId} cleared from AsyncStorage`);
-  } catch (error) {
-    console.error('Error clearing track data:', error);
-  }
-};
 
 export default function Home() {
 
@@ -24,7 +14,7 @@ export default function Home() {
        
      
         {/* Tracks component */}
-        <Tracks  /> {/* Pass the clearTrackData function to Tracks */}
+        {/* <Tracks  />  */}
   
       </ScrollView>
   
