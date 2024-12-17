@@ -1,19 +1,21 @@
 /** @format */
 
-import React, {createContext, useState, useContext} from 'react';
-import {Audio} from 'expo-av';
+import React, { createContext, useState, useContext } from 'react';
+import { Audio } from 'expo-av';
 import Files from '@/interfaces/Files';
-import {MusicPlayerContextInterface} from '@/interfaces/MusicPlayerContext';
+import { MusicPlayerContextInterface } from '@/interfaces/MusicPlayerContext';
+import { PlaylistManager } from '@/constants/Playlists';
 
 const MusicPlayerContext = createContext<
   MusicPlayerContextInterface | undefined
 >(undefined);
 
-export const MusicPlayerProvider = ({children}: any) => {
+export const MusicPlayerProvider = ({ children }: any) => {
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [queue, setQueue] = useState<Files[]>([]);
+  const manager = new PlaylistManager();
 
   const playTrack = async (trackIndex: number) => {
     const track = queue[trackIndex];
@@ -28,7 +30,7 @@ export const MusicPlayerProvider = ({children}: any) => {
     if (!track.uri) {
       return;
     }
-    const {sound: newSound} = await Audio.Sound.createAsync({uri: track.uri});
+    const { sound: newSound } = await Audio.Sound.createAsync({ uri: track.uri });
     setSound(newSound);
     setCurrentTrackIndex(trackIndex);
     setIsPlaying(true);
@@ -66,6 +68,8 @@ export const MusicPlayerProvider = ({children}: any) => {
       setIsPlaying(false);
     }
   };
+
+
 
   return (
     <MusicPlayerContext.Provider

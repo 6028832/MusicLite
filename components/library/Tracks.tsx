@@ -6,16 +6,19 @@ import {
   Text,
   Image,
   StyleSheet,
+  ScrollView,
   TouchableOpacity,
   Alert,
   FlatList,
+  Modal,
 } from 'react-native';
 import {useMusicPlayer} from '@/components/context/AudioPlayer';
 import * as MediaLibrary from 'expo-media-library';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useTheme} from '@/hooks/useTheme';
 import Files from '@/interfaces/Files';
-
+import {PlaylistManager} from '@/constants/Playlists';
+import {MasterPlaylist} from '@/interfaces/MasterPlaylists';
 const GeniusAPI_BASE_URL = 'https://api.genius.com';
 
 export const getApiCode = async () => {
@@ -31,24 +34,17 @@ export default function Tracks() {
   const theme = useTheme();
   const [geniusAccessToken, setGeniusAccessToken] = useState<string>('');
   const playTrack = musicPlayer?.playTrack;
+  const manager = new PlaylistManager();
+  const [playlists, setPlaylists] = useState<any[]>([]);
+  const [showPlaylistsPopup, setShowPlaylistsPopup] = useState(false);
+  const placeholderImage = 'https://via.placeholder.com/100';
 
-  const shuffleQueue = () => {
-    const shuffledTracks = [...tracks].sort(() => Math.random() - 0.5);
-    if (musicPlayer) {
-      musicPlayer.setQueue(shuffledTracks);
-      musicPlayer.currentTrackIndex = 0; // Reset to the first track in the shuffled queue
-      if (musicPlayer?.stopPlayback) {
-        musicPlayer.stopPlayback();
-      }
-      if (musicPlayer?.togglePlayback) {
-        musicPlayer.togglePlayback();
-      }
-      setTimeout(() => {
-        playTrack && playTrack(0); // Play the first track in the shuffled queue
-      }, 1000); // Adding a slight delay to ensure the pause action is completed
-    }
-  };
-
+  interface PlaylistPopupProps {
+    isVisible: boolean;
+    onClose: () => void;
+    playlists: any[];
+    track: string;
+  }
   const fetchTrackInfo = async (trackTitle: string, artist: string) => {
     console.log(`Fetching track info for: ${trackTitle} by ${artist}`);
     try {
@@ -169,7 +165,64 @@ export default function Tracks() {
     loadSavedTracks();
   }, []);
 
-  const placeholderImage = 'https://via.placeholder.com/100';
+
+  const addToPlaylist = async (playlistId: string, track: string) => {
+    // tracks could possible become :string[] later, or in another function
+    await manager.addToplaylist(playlistId, [track]);
+    setShowPlaylistsPopup(false);
+  };
+  useEffect(() => {
+    const fetchPlaylists = async () => {
+      const playlistsData = await manager.getAllPlaylists();
+      setPlaylists(playlistsData);
+    };
+    fetchPlaylists();
+  }, []);
+
+  const PlaylistPopup: React.FC<PlaylistPopupProps> = ({
+    isVisible,
+    onClose,
+    playlists,
+    track,
+  }) => {
+    if (!isVisible) return null;
+
+    return (
+      <Modal visible={isVisible} transparent={true} animationType="slide">
+        <View style={[styles.modalContainer, {backgroundColor: theme.colors.blackBackground}]}>
+
+          <View style={[styles.modalContent, {backgroundColor: theme.colors.background}]}>
+          <View style={styles.playlistItem}>
+            <Text style={[styles.playlistTitle, {color: theme.colors.text}]}>Save to Playlist</Text>
+            <TouchableOpacity
+              onPress={() => setShowPlaylistsPopup(false)}
+            >
+              <Text style={[{color: theme.colors.text}]}>Close</Text>
+            </TouchableOpacity>
+          </View>
+            <Text style={[styles.playlistSubTitle, {color: theme.colors.text}]}>All Playlists</Text>
+            <ScrollView>
+              {playlists.map(playlist => (
+                <TouchableOpacity
+                  key={playlist.id}
+                  style={styles.playlistItem}
+                  onPress={() => addToPlaylist(playlist.id, track)}
+                >
+                  <Image source={playlist.imageUrl}></Image>
+                  <Text style={[styles.artistName, {color: theme.colors.text}]}>
+                    {playlist.name}
+                  </Text>
+                  <Text style={[styles.artistName, {color: theme.colors.text}]}>
+                    {playlist.tracksNumber || 0} Tracks
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
 
   const renderTrack = ({item, index}: {item: Files; index: number}) => (
     <TouchableOpacity
@@ -177,10 +230,13 @@ export default function Tracks() {
       onPress={() => playTrack && playTrack(index)}
     >
       <View style={styles.trackDetails}>
-        <Image
-          source={{uri: item.imageUrl || placeholderImage}}
-          style={styles.image}
-        />
+        <View style={styles.imageContainer}>
+          <Image
+            source={{uri: item.imageUrl || placeholderImage}}
+            style={styles.image}
+          />
+        </View>
+
         <View style={styles.textContainer}>
           <Text style={[styles.trackTitle, {color: theme.colors.text}]}>
             {item.filename || 'Unknown Title'}
@@ -189,15 +245,10 @@ export default function Tracks() {
             {item.artist || 'Unknown Artist'}
           </Text>
         </View>
+
         <TouchableOpacity
-          onPress={() => {
-            Alert.alert(
-              item.filename || 'Track Info',
-              `Artist: ${item.artist || 'Unknown'}`,
-              [{text: 'OK'}],
-              {cancelable: true}
-            );
-          }}
+          onPress={() => setShowPlaylistsPopup(true)}
+          style={styles.settingsIconContainer}
         >
           <Image
             source={require('@/assets/images/settings.png')}
@@ -205,6 +256,15 @@ export default function Tracks() {
           />
         </TouchableOpacity>
       </View>
+
+      {showPlaylistsPopup && (
+        <PlaylistPopup
+          isVisible={showPlaylistsPopup}
+          onClose={() => setShowPlaylistsPopup(false)}
+          playlists={playlists}
+          track={item.uri}
+        />
+      )}
     </TouchableOpacity>
   );
 
@@ -212,9 +272,6 @@ export default function Tracks() {
     <Text style={styles.loadingText}>Loading tracks...</Text>
   ) : (
     <View style={styles.container}>
-      <TouchableOpacity onPress={shuffleQueue} style={styles.shuffleButton}>
-        <Text style={styles.shuffleButtonText}>Shuffle Queue</Text>
-      </TouchableOpacity>
       <FlatList
         data={tracks}
         keyExtractor={(item, index) => index.toString()}
@@ -224,12 +281,11 @@ export default function Tracks() {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
-    padding: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   loadingText: {
     fontSize: 16,
@@ -241,56 +297,85 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   trackContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-    padding: 10,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  trackDetails: {
-    flexDirection: 'row',
-    alignItems: 'center',
     flex: 1,
-    padding: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 8,
   },
   image: {
-    width: 50,
-    height: 50,
+    width: 60,
+    height: 60,
     borderRadius: 5,
     marginRight: 10,
   },
-  textContainer: {
-    flex: 1,
-  },
   trackTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#333',
   },
+  playlistTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
   artistName: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#555',
   },
   settingsIcon: {
     width: 20,
     height: 20,
-    tintColor: '#888',
+    marginLeft: 10,
   },
-  shuffleButton: {
-    backgroundColor: '#1DB954',
-    padding: 10,
-    borderRadius: 5,
+  trackDetails: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    padding: 10,
   },
-  shuffleButtonText: {
-    color: '#fff',
+
+  imageContainer: {
+    width: 50,
+    marginRight: 10,
+  },
+
+  textContainer: {
+    flex: 1,
+    paddingHorizontal: 10,
+  },
+
+  settingsIconContainer: {
+    width: 20,
+    height: 20,
+  },
+
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    borderRadius: 10,
+    padding: 20,
+    width: '90%',
+    maxHeight: '80%',
+  },
+  playlistItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+  },
+  playListItems: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+  },
+  playlistSubTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    marginVertical: 10,
   },
 });
