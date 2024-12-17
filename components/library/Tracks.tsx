@@ -6,7 +6,6 @@ import {
   Text,
   Image,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Alert,
   FlatList,
@@ -33,6 +32,23 @@ export default function Tracks() {
   const [geniusAccessToken, setGeniusAccessToken] = useState<string>('');
   const playTrack = musicPlayer?.playTrack;
 
+  const shuffleQueue = () => {
+    const shuffledTracks = [...tracks].sort(() => Math.random() - 0.5);
+    if (musicPlayer) {
+      musicPlayer.setQueue(shuffledTracks);
+      musicPlayer.currentTrackIndex = 0; // Reset to the first track in the shuffled queue
+      if (musicPlayer?.stopPlayback) {
+        musicPlayer.stopPlayback();
+      }
+      if (musicPlayer?.togglePlayback) {
+        musicPlayer.togglePlayback();
+      }
+      setTimeout(() => {
+        playTrack && playTrack(0); // Play the first track in the shuffled queue
+      }, 1000); // Adding a slight delay to ensure the pause action is completed
+    }
+  };
+
   const fetchTrackInfo = async (trackTitle: string, artist: string) => {
     console.log(`Fetching track info for: ${trackTitle} by ${artist}`);
     try {
@@ -58,7 +74,7 @@ export default function Tracks() {
 
       if (hits.length === 0) {
         console.warn('No track found for:', trackTitle, artist);
-        return { artist: 'Unknown Artist', imageUrl: '' };
+        return {artist: 'Unknown Artist', imageUrl: ''};
       }
 
       const hit = hits[0];
@@ -71,7 +87,7 @@ export default function Tracks() {
       };
     } catch (error) {
       console.error('Error fetching Genius track info:', error);
-      return { artist: 'Unknown Artist', imageUrl: '' };
+      return {artist: 'Unknown Artist', imageUrl: ''};
     }
   };
 
@@ -196,6 +212,9 @@ export default function Tracks() {
     <Text style={styles.loadingText}>Loading tracks...</Text>
   ) : (
     <View style={styles.container}>
+      <TouchableOpacity onPress={shuffleQueue} style={styles.shuffleButton}>
+        <Text style={styles.shuffleButtonText}>Shuffle Queue</Text>
+      </TouchableOpacity>
       <FlatList
         data={tracks}
         keyExtractor={(item, index) => index.toString()}
@@ -232,12 +251,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    backgroundColor: '#282828',
   },
   trackDetails: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    padding: 5,
   },
   image: {
     width: 50,
@@ -261,5 +280,17 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     tintColor: '#888',
+  },
+  shuffleButton: {
+    backgroundColor: '#1DB954',
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  shuffleButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

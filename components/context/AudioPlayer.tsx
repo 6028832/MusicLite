@@ -60,10 +60,6 @@ export const MusicPlayerProvider = ({children}: any) => {
     }
   };
 
-  const shuffleQueue = () => {
-    setQueue([...queue].sort(() => Math.random() - 0.5));
-  };
-
   const stopPlayback = async () => {
     if (sound) {
       await sound.stopAsync();
@@ -81,7 +77,6 @@ export const MusicPlayerProvider = ({children}: any) => {
         playTrack: (trackIndex: number) => playTrack(trackIndex),
         skipTrack,
         previousTrack,
-        shuffleQueue,
         togglePlayback,
         stopPlayback,
         isPlaying

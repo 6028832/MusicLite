@@ -10,10 +10,13 @@ import {
   TouchableOpacity,
   Button,
   View,
+  Image,
 } from 'react-native';
 import {PlaylistManager} from '@/constants/Playlists';
 import {MasterPlaylist} from '@/interfaces/MasterPlaylists';
 import {useTheme} from '@/hooks/useTheme';
+
+const placeholderImage = 'https://via.placeholder.com/100';
 
 export default function Playlists() {
   const [playlists, setPlaylists] = useState<MasterPlaylist[]>([]);
@@ -56,10 +59,7 @@ export default function Playlists() {
   const renderCreatePlaylist = () => (
     <View>
       <TextInput
-        style={[
-          styles.input,
-          {color: theme.colors.text, borderColor: theme.colors.border},
-        ]}
+        style={[styles.input, {color: theme.colors.text}]}
         onChangeText={setNewPlaylistName}
         value={newPlaylistName}
         placeholder="Enter playlist name"
@@ -68,12 +68,12 @@ export default function Playlists() {
       <Button
         title="Create"
         onPress={handleCreatePlaylist}
-        color={theme.colors.primary}
+        color={theme.colors.text}
       />
       <Button
         title="Cancel"
         onPress={() => setShowCreatePlaylist(false)}
-        color={theme.colors.primary}
+        color={theme.colors.text}
       />
     </View>
   );
@@ -81,22 +81,31 @@ export default function Playlists() {
   const renderPlaylists = () => (
     <ScrollView>
       <TouchableOpacity onPress={() => setShowCreatePlaylist(true)}>
-        <Text style={[styles.text, {color: theme.colors.text}]}>
-          Create New Playlist
-        </Text>
+        <Image source={{uri: placeholderImage}} style={styles.image} />
       </TouchableOpacity>
       {playlists.length > 0 ? (
-        playlists.map(playlist => (
-          <TouchableOpacity
-            key={playlist.id}
-            style={styles.albumContainer}
-            onPress={() => setSelectedPlaylist(playlist)}
-          >
-            <Text style={[styles.albumTitle]}>
-              {playlist.name}
-            </Text>
-          </TouchableOpacity>
-        ))
+        <View style={styles.playlistGrid}>
+          {playlists.map(playlist => (
+            <TouchableOpacity
+              key={playlist.id}
+              style={styles.albumContainer}
+              onPress={() => setSelectedPlaylist(playlist)}
+            >
+              <>
+                <Image
+                  source={{uri: playlist.imageUrl || placeholderImage}}
+                  style={styles.image}
+                />
+                <Text style={[styles.albumTitle, {color: theme.colors.text}]}>
+                  {playlist.name}
+                </Text>
+                <Text style={[styles.text, {color: theme.colors.text}]}>
+                  {playlist.tracksNumber || 0} tracks
+                </Text>
+              </>
+            </TouchableOpacity>
+          ))}
+        </View>
       ) : (
         <Text style={[styles.loadingText, {color: theme.colors.text}]}>
           No playlists available
@@ -124,8 +133,9 @@ export default function Playlists() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flex: 2,
     padding: 10,
+    flexDirection: 'column',
   },
   loadingText: {
     textAlign: 'center',
@@ -135,16 +145,20 @@ const styles = StyleSheet.create({
   albumContainer: {
     padding: 10,
     marginBottom: 10,
-    backgroundColor: '#f0f0f0',
     borderRadius: 8,
+    width: '48%',
   },
   albumTitle: {
     fontSize: 18,
-      fontWeight: 'bold',
+    fontWeight: 'bold',
+  },
+  image: {
+    width: '100%',
+    height: 100,
+    borderRadius: 8,
   },
   text: {
     fontSize: 18,
-    fontWeight: 'bold',
     marginBottom: 10,
   },
   input: {
@@ -152,5 +166,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 10,
     marginBottom: 10,
+  },
+  playlistGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
 });

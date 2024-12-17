@@ -1,7 +1,7 @@
 /** @format */
 
 import React, {useState} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet, Image} from 'react-native';
+import {View, Text  , TouchableOpacity, StyleSheet, Image} from 'react-native';
 import {useMusicPlayer} from './context/AudioPlayer';
 import FullScreenPlayer from '@/components/FullPlayer';
 import {useTheme} from '@react-navigation/native';
@@ -24,7 +24,10 @@ const MiniPlayer = () => {
         <View style={{flexDirection: 'row', alignItems: 'center'}}>
           <Image source={{uri: currentTrack.imageUrl}} style={styles.image} />
           <View style={styles.playerbarTextContainer}>
-            <Text style={[styles.trackName, {color: theme.colors.text}]}>
+            <Text
+              style={[styles.trackName, {color: theme.colors.text}]}
+              numberOfLines={1}
+            >
               {currentTrack.filename}
             </Text>
             <Text style={[styles.trackName, {color: theme.colors.text}]}>
@@ -56,12 +59,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9f9f9',
     borderTopWidth: 1,
     borderTopColor: '#ccc',
+    position: 'absolute',
+    bottom: 50,
   },
-  trackName: {fontSize: 16, fontWeight: 'bold', flex: 1},
+  trackName: {
+    fontSize: 14,
+    flex: 1,
+  },
   playButton: {marginLeft: 16},
-  playText: { fontSize: 14 },
-  image: { width: 50, height: 50, borderRadius: 8 }, 
-  playerbarTextContainer: { flex: 1, marginHorizontal: 16 },
+  playText: {fontSize: 14},
+  image: {width: 50, height: 50, borderRadius: 8},
+  playerbarTextContainer: {
+    flex: 1,
+    marginHorizontal: 16,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
 });
 
 export default MiniPlayer;

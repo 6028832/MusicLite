@@ -156,13 +156,26 @@ export default function Header() {
   };
 
   return (
-    <View style={[{ backgroundColor: theme.colors.background }, styles.container]}>
+    <View
+      style={[
+        styles.container,
+        {backgroundColor: theme.colors.blackBackground},
+      ]}
+    >
       <View style={styles.leftContainer}>
-        <Image style={styles.image} source={require('@/assets/images/react-logo.png')} />
-        <Text style={[styles.title, { color: theme.colors.text }]}>Music Lite</Text>
+        <Image
+          style={styles.image}
+          source={require('@/assets/images/react-logo.png')}
+        />
+        <Text style={[styles.title, {color: theme.colors.text}]}>
+          Music Lite
+        </Text>
       </View>
       <TouchableOpacity onPress={() => setIsSettingsVisible(true)}>
-        <Image style={styles.icon} source={require('@/assets/images/download.png')} />
+        <Image
+          style={styles.icon}
+          source={require('@/assets/images/download.png')}
+        />
       </TouchableOpacity>
 
       <Modal
@@ -171,7 +184,12 @@ export default function Header() {
         onRequestClose={() => setIsSettingsVisible(false)}
         transparent={false}
       >
-        <View style={styles.modalContainer}>
+        <View
+          style={[
+            styles.modalContainer,
+            {backgroundColor: theme.colors.blackBackground},
+          ]}
+        >
           <View style={styles.navBar}>
             <TouchableOpacity onPress={() => setIsSettingsVisible(false)}>
               <Image
@@ -183,18 +201,22 @@ export default function Header() {
           </View>
           <View style={styles.settingsContent}>
             <View style={styles.tabContainer}>
-              {['General', 'Notifications', 'About', 'layout', 'Storage'].map((tab) => (
-                <TouchableOpacity
-                  key={tab}
-                  onPress={() => setSelectedTab(tab)}
-                  style={[
-                    styles.tabButton,
-                    selectedTab === tab && { backgroundColor: theme.colors.text },
-                  ]}
-                >
-                  <Text style={styles.tabText}>{tab}</Text>
-                </TouchableOpacity>
-              ))}
+              {['General', 'Notifications', 'About', 'layout', 'Storage'].map(
+                tab => (
+                  <TouchableOpacity
+                    key={tab}
+                    onPress={() => setSelectedTab(tab)}
+                    style={[
+                      styles.tabButton,
+                      selectedTab === tab && {
+                        backgroundColor: theme.colors.text,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.tabText}>{tab}</Text>
+                  </TouchableOpacity>
+                )
+              )}
             </View>
             <ScrollView style={styles.scrollContainer}>
               {renderTabContent()}
@@ -207,7 +229,6 @@ export default function Header() {
 }
 
 const styles = StyleSheet.create({
-  // ... existing styles ...
   container: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -235,7 +256,6 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'black',
     justifyContent: 'flex-start',
     padding: 20,
   },
