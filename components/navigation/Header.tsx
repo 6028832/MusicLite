@@ -207,7 +207,6 @@ export default function Header() {
 }
 
 const styles = StyleSheet.create({
-  // ... existing styles ...
   container: {
     flexDirection: 'row',
     justifyContent: 'space-between',

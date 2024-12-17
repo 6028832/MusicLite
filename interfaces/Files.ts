@@ -7,7 +7,7 @@ export default interface Files {
 
   filename: string;
 
-  uri?: string;
+  uri: string;
 
   mediaType: MediaLibrary.MediaTypeValue;
 

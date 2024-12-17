@@ -1,6 +1,6 @@
 /** @format */
 
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -10,20 +10,26 @@ import {
   TouchableOpacity,
   Button,
   View,
+  Image
 } from 'react-native';
-import {PlaylistManager} from '@/constants/Playlists';
-import {MasterPlaylist} from '@/interfaces/MasterPlaylists';
-import {useTheme} from '@/hooks/useTheme';
+import { PlaylistManager } from '@/constants/Playlists';
+import { MasterPlaylist } from '@/interfaces/MasterPlaylists';
+import { useTheme } from '@/hooks/useTheme';
+import { ReactNode } from 'react';
 
 export default function Playlists() {
   const [playlists, setPlaylists] = useState<MasterPlaylist[]>([]);
   const [selectedPlaylist, setSelectedPlaylist] =
-    useState<MasterPlaylist | null>(null);
+    useState<MasterPlaylist | undefined | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
+  const [showPlaylistDetails, setShowPlaylistDetails] = useState(false)
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const manager = new PlaylistManager();
   const theme = useTheme();
+  const placeholderImage = 'https://via.placeholder.com/100';
+  const [playlistSongs, setPlaylistSongs] = useState<string[]>([]);
+
 
   useEffect(() => {
     fetchPlaylists();
@@ -31,7 +37,7 @@ export default function Playlists() {
 
   const fetchPlaylists = async () => {
     try {
-      const fetchedPlaylist: MasterPlaylist[] = await manager.getAllPlaylists();
+      const fetchedPlaylist: any[] = await manager.getAllPlaylists();
       setPlaylists(fetchedPlaylist);
     } catch (error) {
       console.error(error);
@@ -44,7 +50,7 @@ export default function Playlists() {
 
   const handleCreatePlaylist = async () => {
     if (newPlaylistName.trim()) {
-      await manager.createNewplaylist(newPlaylistName, ['']);
+      await manager.createNewplaylist(newPlaylistName, []);
       setNewPlaylistName('');
       setShowCreatePlaylist(false);
       fetchPlaylists();
@@ -53,12 +59,25 @@ export default function Playlists() {
     }
   };
 
+  const deletePlaylist = async (playlistId: string) => {
+    setLoading(true);
+    try {
+      manager.removePlaylist(playlistId);
+      fetchPlaylists();
+    } catch (error) {
+      console.error(error);
+      setPlaylists([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const renderCreatePlaylist = () => (
     <View>
       <TextInput
         style={[
           styles.input,
-          {color: theme.colors.text, borderColor: theme.colors.border},
+          { color: theme.colors.text },
         ]}
         onChangeText={setNewPlaylistName}
         value={newPlaylistName}
@@ -68,37 +87,84 @@ export default function Playlists() {
       <Button
         title="Create"
         onPress={handleCreatePlaylist}
-        color={theme.colors.primary}
+        color={theme.colors.text}
       />
       <Button
         title="Cancel"
         onPress={() => setShowCreatePlaylist(false)}
-        color={theme.colors.primary}
+        color={theme.colors.text}
       />
     </View>
   );
 
+  const fetchPlaylistDetails = async (playlistId: string) => {
+    try {
+      const songs = await manager.getPlaylistSongs(playlistId);
+      setPlaylistSongs(songs?.music || []);
+    } catch (error) {
+      console.error('Error fetching songs:', error);
+      setPlaylistSongs([]);
+    }
+  };
+
+const renderPlaylistDetails = () => {
+  if (!selectedPlaylist) return null;
+
+  return (
+    <View>
+      <Text style={[styles.albumTitle, { color: theme.colors.text }]}>
+        {selectedPlaylist.name}
+      </Text>
+      {playlistSongs.length > 0 ? (
+        <ScrollView>
+          {playlistSongs.map((song, index) => (
+            <Text key={index} style={[styles.text, { color: theme.colors.text }]}>
+              {song}
+            </Text>
+          ))}
+        </ScrollView>
+      ) : (
+        <Text style={[styles.text, { color: theme.colors.text }]}>No songs available</Text>
+      )}
+      <Button title="Back" onPress={() => setShowPlaylistDetails(false)} />
+    </View>
+  );
+};
+  
   const renderPlaylists = () => (
     <ScrollView>
       <TouchableOpacity onPress={() => setShowCreatePlaylist(true)}>
-        <Text style={[styles.text, {color: theme.colors.text}]}>
-          Create New Playlist
-        </Text>
+        <Image source={{ uri: placeholderImage }} style={styles.image} />
       </TouchableOpacity>
       {playlists.length > 0 ? (
-        playlists.map(playlist => (
-          <TouchableOpacity
-            key={playlist.id}
-            style={styles.albumContainer}
-            onPress={() => setSelectedPlaylist(playlist)}
-          >
-            <Text style={[styles.albumTitle]}>
-              {playlist.name}
-            </Text>
-          </TouchableOpacity>
-        ))
+        <View style={styles.playlistGrid}>
+          {playlists.map(playlist => (
+            <TouchableOpacity
+              key={playlist.id}
+              style={styles.albumContainer}
+              onPress={() => {
+                setShowPlaylistDetails(true);
+                setSelectedPlaylist(playlist);
+                fetchPlaylistDetails(playlist.id);
+              }}
+            >
+              <>
+                <Image
+                  source={{ uri: playlist.imageUrl || placeholderImage }}
+                  style={styles.image}
+                />
+                <Text style={[styles.albumTitle, { color: theme.colors.text }]}>
+                  {playlist.name}
+                </Text>
+                <Text style={[styles.text, { color: theme.colors.text }]}>
+                  {playlist.tracksNumber || 0} tracks
+                </Text>
+              </>
+            </TouchableOpacity>
+          ))}
+        </View>
       ) : (
-        <Text style={[styles.loadingText, {color: theme.colors.text}]}>
+        <Text style={[styles.loadingText, { color: theme.colors.text }]}>
           No playlists available
         </Text>
       )}
@@ -107,15 +173,20 @@ export default function Playlists() {
 
   return (
     <SafeAreaView
-      style={[styles.container, {backgroundColor: theme.colors.background}]}
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
       {loading ? (
-        <Text style={[styles.loadingText, {color: theme.colors.text}]}>
+        <Text style={[styles.loadingText, { color: theme.colors.text }]}>
           Loading playlists...
         </Text>
       ) : showCreatePlaylist ? (
         renderCreatePlaylist()
-      ) : (
+        ) : showPlaylistDetails ? (
+          // Moet argumenten hebben, no idea what tho @redanil
+
+          // playlist id or the playlist in question
+        renderPlaylistDetails()
+        ): (
         renderPlaylists()
       )}
     </SafeAreaView>
@@ -124,8 +195,9 @@ export default function Playlists() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flex: 2,
     padding: 10,
+    flexDirection: 'column',
   },
   loadingText: {
     textAlign: 'center',
@@ -135,16 +207,20 @@ const styles = StyleSheet.create({
   albumContainer: {
     padding: 10,
     marginBottom: 10,
-    backgroundColor: '#f0f0f0',
     borderRadius: 8,
+    width: '48%',
   },
   albumTitle: {
     fontSize: 18,
-      fontWeight: 'bold',
+    fontWeight: 'bold',
+  },
+  image: {
+    width: '100%',
+    height: 100,
+    borderRadius: 8,
   },
   text: {
     fontSize: 18,
-    fontWeight: 'bold',
     marginBottom: 10,
   },
   input: {
@@ -152,5 +228,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 10,
     marginBottom: 10,
+  },
+  playlistGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
 });

@@ -1,25 +1,28 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { MasterPlaylist } from '@/interfaces/MasterPlaylists';
 export class PlaylistManager {
     constructor() { }
 
-    async firstStart(){
+    async firstStart() {
         const testArray = [{
             "name": "test",
             "music": "icle",
-            "id": "s"},{
+            "id": "s"
+        }, {
             "name": "test",
             "music": "icle",
-            "id": "ss"},{
+            "id": "ss"
+        }, {
             "name": "test",
             "music": "icle",
-            "id": "sss"}];
+            "id": "sss"
+        }];
 
 
-        
-            this.save("allPlaylists", []);
+
+        this.save("allPlaylists", []);
     }
-    
+
     private async save(key: string, data: any) {
         try {
             await AsyncStorage.setItem(key, JSON.stringify(data));
@@ -41,7 +44,7 @@ export class PlaylistManager {
     }
 
 
-    async getAllPlaylists(){
+    async getAllPlaylists(): Promise<object[]> {
         // a few things in this class are gonna be based on this, so thats why
         return this.fetch("allPlaylists")
     }
@@ -55,13 +58,14 @@ export class PlaylistManager {
         // new playlist
         const data = {
             "name": name,
-            "music": music,
-            "id": id
+            "id": id,
+            "music": music
         }
+
         this.save(id, data)
 
         // add to master list
-        let currentplaylists = await this.getAllPlaylists();
+        let currentplaylists: object[] = await this.getAllPlaylists();
         currentplaylists.push({
             "name": name,
             "id": id
@@ -74,7 +78,7 @@ export class PlaylistManager {
         let playlist = await this.fetch(playlistId);
         files.forEach(file => {
             if (!playlist[0].music.includes(file)) {
-                playlist[0].music.push(file);
+            playlist[0].music.push(file);
             }
         });
 
@@ -93,14 +97,24 @@ export class PlaylistManager {
     }
 
     async removePlaylist(playlistId: string) {
-        try{
+        try {
             AsyncStorage.removeItem(playlistId)
 
-            let playlists = await this.getAllPlaylists();
-            let index = playlists[0].indexOf(playlistId, 0);
-            playlists[0].music = playlists[0].splice(index, 1);
-    
+            let playlists: any[] = await this.getAllPlaylists();
+            const updatedPlaylists = playlists.filter(p => p.id !== playlistId);
+            this.save("allPlaylists", updatedPlaylists);
+
+
             this.save("allPlaylists", playlists);
+        } catch {
+            console.error("Muted martijn, error solved! Fuck you martijn")
+        }
+
+    }
+
+    async getPlaylistSongs(playlistId: string) {
+        try {
+            return await this.fetch(playlistId);
         } catch {
             console.error("Muted martijn, error solved! Fuck you martijn")
         }
