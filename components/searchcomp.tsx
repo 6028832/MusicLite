@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, FlatList, StyleSheet, Image, Appearance } from 'react-native';
+import { View, Text, TextInput, FlatList, StyleSheet, Image, TouchableOpacity, Appearance } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAllAudioFiles } from '@/constants/FetchSongs';
+import { useMusicPlayer } from '@/components/context/AudioPlayer'; // Import the MusicPlayerContext
 import Files from '@/interfaces/Files';
 
 const SEARCH_STORAGE_KEY = 'recentSearches';
-const GENIUS_API_BASE_URL = 'https://api.genius.com'; // Genius API base URL
+const GENIUS_API_BASE_URL = 'https://api.genius.com';
 
 const FileSearchComponent = () => {
   const [files, setFiles] = useState<Files[]>([]);
@@ -13,6 +14,7 @@ const FileSearchComponent = () => {
   const [filteredFiles, setFilteredFiles] = useState<Files[]>([]);
   const [loading, setLoading] = useState(false);
   const [geniusAccessToken, setGeniusAccessToken] = useState<string>('');
+  const { playTrack, setQueue, queue, currentTrackIndex, togglePlayback, isPlaying } = useMusicPlayer();
 
   const isDarkMode = Appearance.getColorScheme() === 'dark';
 
@@ -27,7 +29,7 @@ const FileSearchComponent = () => {
 
   useEffect(() => {
     if (geniusAccessToken) {
-      fetchFiles(); 
+      fetchFiles();
     }
   }, [geniusAccessToken]);
 
@@ -45,16 +47,16 @@ const FileSearchComponent = () => {
         const data = await response.json();
         return data.response.hits;
       };
-  
+
       let hits = await searchTrack(trackTitle);
       if (hits.length === 0) {
         hits = await searchTrack(artist);
       }
-  
+
       if (hits.length === 0) {
         return { artist: 'Unknown Artist', imageUrl: '' };
       }
-  
+
       const hit = hits[0];
       return {
         artist: hit.result.primary_artist.name,
@@ -62,11 +64,10 @@ const FileSearchComponent = () => {
       };
     } catch (error) {
       console.error('Error fetching Genius track info:', error);
-      // Return default values if API fails
       return { artist: 'Unknown Artist', imageUrl: '' };
     }
   };
-  
+
   const fetchFiles = async () => {
     setLoading(true);
     try {
@@ -105,7 +106,16 @@ const FileSearchComponent = () => {
     });
 
     setFilteredFiles(sorted);
-    AsyncStorage.setItem(SEARCH_STORAGE_KEY, query);  
+    AsyncStorage.setItem(SEARCH_STORAGE_KEY, query);
+  };
+
+  const handlePlayTrack = (index: number) => {
+    setQueue(filteredFiles);
+    playTrack(index);
+  };
+
+  const handleTogglePlayback = () => {
+    togglePlayback();
   };
 
   return (
@@ -121,8 +131,11 @@ const FileSearchComponent = () => {
       <FlatList
         data={filteredFiles}
         keyExtractor={(item) => item.uri}
-        renderItem={({ item }) => (
-          <View style={styles.fileItem}>
+        renderItem={({ item, index }) => (
+          <TouchableOpacity
+            style={[styles.fileItem, { backgroundColor: isDarkMode ? '#333' : '#f8f8f8' }]}
+            onPress={() => handlePlayTrack(index)}
+          >
             {item.imageUrl ? (
               <Image source={{ uri: item.imageUrl }} style={styles.artwork} />
             ) : (
@@ -131,16 +144,12 @@ const FileSearchComponent = () => {
               </View>
             )}
             <View style={styles.textContainer}>
-              <Text style={[styles.fileTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
-                {item.filename}
-              </Text>
+              <Text style={[styles.fileTitle, { color: isDarkMode ? '#fff' : '#000' }]}>{item.filename}</Text>
               {item.artist && item.artist !== 'Unknown Artist' && (
-                <Text style={[styles.artist, { color: isDarkMode ? '#fff' : '#000' }]}>
-                  {item.artist}
-                </Text>
+                <Text style={[styles.artist, { color: isDarkMode ? '#fff' : '#000' }]}>{item.artist}</Text>
               )}
             </View>
-          </View>
+          </TouchableOpacity>
         )}
       />
     </View>
@@ -169,6 +178,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 10,
+    padding: 10,
+    borderRadius: 5,
   },
   artwork: {
     width: 50,
@@ -191,6 +202,7 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     flexDirection: 'column',
+    flex: 1,
   },
   fileTitle: {
     fontSize: 16,
@@ -201,6 +213,12 @@ const styles = StyleSheet.create({
     fontWeight: 'normal',
     color: '#888',
     marginTop: 4,
+  },
+  playButton: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0066cc',
+    marginTop: 5,
   },
 });
 
