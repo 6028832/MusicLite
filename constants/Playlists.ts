@@ -1,7 +1,6 @@
 /** @format */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {MasterPlaylist} from '@/interfaces/MasterPlaylists';
 export class PlaylistManager {
   constructor() {}
 
@@ -107,7 +106,7 @@ export class PlaylistManager {
     }
   }
 
-  async getPlaylistSongs(playlistId: string): Promise<string[]> {
+  async getPlaylistSongs(playlistId: string) {
     const playlist = await this.fetch(playlistId);
     if (!playlist || !playlist.music) {
       console.error('Playlist not found or invalid structure.');

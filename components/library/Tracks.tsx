@@ -18,7 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useTheme} from '@/hooks/useTheme';
 import Files from '@/interfaces/Files';
 import {PlaylistManager} from '@/constants/Playlists';
-import {MasterPlaylist} from '@/interfaces/MasterPlaylists';
+import {TracksManager} from '@/constants/TracksManager';
 const GeniusAPI_BASE_URL = 'https://api.genius.com';
 
 export const getApiCode = async () => {
@@ -35,6 +35,7 @@ export default function Tracks() {
   const [geniusAccessToken, setGeniusAccessToken] = useState<string>('');
   const playTrack = musicPlayer?.playTrack;
   const manager = new PlaylistManager();
+  const tracksManager = new TracksManager();
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [showPlaylistsPopup, setShowPlaylistsPopup] = useState(false);
   const placeholderImage = 'https://via.placeholder.com/100';
@@ -83,7 +84,10 @@ export default function Tracks() {
       };
     } catch (error) {
       console.error('Error fetching Genius track info:', error);
-      return {artist: 'Unknown Artist', imageUrl: ''};
+      return {
+        artist: 'Unknown Artist',
+        imageUrl: 'https://via.placeholder.com/100',
+      };
     }
   };
 
@@ -91,35 +95,73 @@ export default function Tracks() {
     setLoading(true);
     console.log('Accessing media library...');
     try {
-      const {assets} = await MediaLibrary.getAssetsAsync({
-        mediaType: MediaLibrary.MediaType.audio,
-      });
+      const storedTracks = await AsyncStorage.getItem('savedTracks');
+      if (storedTracks) {
+        const parsedTracks = JSON.parse(storedTracks);
+        setTracks(parsedTracks);
+        if (musicPlayer) {
+          musicPlayer.setQueue(parsedTracks);
+        }
+        console.log('Loaded tracks from AsyncStorage');
+        setLoading(false);
+        return;
+      }
+
+      tracksManager.firstBoot();
+      let assets: Files[] = await tracksManager.getAudioFiles();
 
       console.log(`Found ${assets.length} audio files in library.`);
 
-      const tracksWithInfo = await Promise.all(
+      let fetchAmount: number = 0;
+      let skipAmount: number = 0;
+      const tracksWithInfo: Files[] = await Promise.all(
         assets.map(async asset => {
-          let trackTitle = '';
-          let artist = '';
+          if (asset.imageUrl == '' || asset.imageUrl == undefined) {
+            let trackTitle = '';
+            let artist = '';
+            let name = asset.filename;
 
-          const match = asset.filename.match(/(.*?)(?:\s*\((.*?)\))?\.mp3/);
+            const match = asset.filename.match(/(.*?)(?:\s*\((.*?)\))?\.mp3/);
 
-          if (match) {
-            trackTitle = match[1].trim();
-            artist = match[2] ? match[2].trim() : '';
+            if (match) {
+              trackTitle = match[1].trim();
+              artist = match[2] ? match[2].trim() : '';
+            } else {
+              const parts = asset.filename
+                .split(' - ')
+                .map(part => part.trim());
+              trackTitle = parts[0];
+              artist = parts[1] || '';
+            }
+
+            // Apply search-like behavior here
+            const trackInfo = await fetchTrackInfo(trackTitle, artist);
+            await tracksManager.saveSong(name, {
+              albumId: asset.albumId ?? 0,
+              creationTime: asset.creationTime ?? 0,
+              duration: asset.duration ?? 'No data on duration',
+              filename: asset.filename ?? 'Unknown audio file',
+              height: asset.height ?? 0,
+              id: asset.id ?? 0,
+              mediaType: 'audio',
+              modificationTime: asset.modificationTime ?? 0,
+              uri: asset.uri,
+              width: asset.width ?? 0,
+              imageUrl: trackInfo.imageUrl ?? 'https://via.placeholder.com/100',
+              artist: trackInfo.artist ?? 'Unknown Artist',
+            });
+            fetchAmount++;
+            return {...asset, ...trackInfo};
           } else {
-            const parts = asset.filename.split(' - ').map(part => part.trim());
-            trackTitle = parts[0];
-            artist = parts[1] || '';
+            skipAmount++;
+            return {...asset};
           }
-
-          // Apply search-like behavior here
-          const trackInfo = await fetchTrackInfo(trackTitle, artist);
-          return {...asset, ...trackInfo};
         })
       );
 
-      console.log('Fetched track information:', tracksWithInfo);
+      console.log(
+        `fetched ${tracksWithInfo.length} track(s). ${fetchAmount} track(s) fetched and ${skipAmount} track(s) skipped`
+      );
       setTracks(tracksWithInfo);
       await AsyncStorage.setItem('savedTracks', JSON.stringify(tracksWithInfo));
       if (musicPlayer) {
@@ -149,22 +191,6 @@ export default function Tracks() {
     }
   }, [geniusAccessToken]);
 
-  // Load saved tracks from AsyncStorage on page load
-  useEffect(() => {
-    const loadSavedTracks = async () => {
-      try {
-        const storedTracks = await AsyncStorage.getItem('savedTracks');
-        if (storedTracks) {
-          setTracks(JSON.parse(storedTracks));
-          console.log('Loaded tracks from AsyncStorage');
-        }
-      } catch (error) {
-        console.error('Error loading tracks from AsyncStorage:', error);
-      }
-    };
-    loadSavedTracks();
-  }, []);
-
 
   const addToPlaylist = async (playlistId: string, track: string) => {
     // tracks could possible become :string[] later, or in another function
@@ -189,18 +215,29 @@ export default function Tracks() {
 
     return (
       <Modal visible={isVisible} transparent={true} animationType="slide">
-        <View style={[styles.modalContainer, {backgroundColor: theme.colors.blackBackground}]}>
-
-          <View style={[styles.modalContent, {backgroundColor: theme.colors.background}]}>
-          <View style={styles.playlistItem}>
-            <Text style={[styles.playlistTitle, {color: theme.colors.text}]}>Save to Playlist</Text>
-            <TouchableOpacity
-              onPress={() => setShowPlaylistsPopup(false)}
-            >
-              <Text style={[{color: theme.colors.text}]}>Close</Text>
-            </TouchableOpacity>
-          </View>
-            <Text style={[styles.playlistSubTitle, {color: theme.colors.text}]}>All Playlists</Text>
+        <View
+          style={[
+            styles.modalContainer,
+            {backgroundColor: theme.colors.blackBackground},
+          ]}
+        >
+          <View
+            style={[
+              styles.modalContent,
+              {backgroundColor: theme.colors.background},
+            ]}
+          >
+            <View style={styles.playlistItem}>
+              <Text style={[styles.playlistTitle, {color: theme.colors.text}]}>
+                Save to Playlist
+              </Text>
+              <TouchableOpacity onPress={() => setShowPlaylistsPopup(false)}>
+                <Text style={[{color: theme.colors.text}]}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.playlistSubTitle, {color: theme.colors.text}]}>
+              All Playlists
+            </Text>
             <ScrollView>
               {playlists.map(playlist => (
                 <TouchableOpacity
@@ -262,7 +299,7 @@ export default function Tracks() {
           isVisible={showPlaylistsPopup}
           onClose={() => setShowPlaylistsPopup(false)}
           playlists={playlists}
-          track={item.uri}
+          track={item.filename}
         />
       )}
     </TouchableOpacity>
@@ -285,7 +322,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingTop: 5,
+    paddingBottom: 50
   },
   loadingText: {
     fontSize: 16,

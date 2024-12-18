@@ -1,21 +1,22 @@
 /** @format */
 
-import React, { createContext, useState, useContext } from 'react';
-import { Audio } from 'expo-av';
+import React, {createContext, useState, useContext, useEffect} from 'react';
+import {Audio} from 'expo-av';
 import Files from '@/interfaces/Files';
-import { MusicPlayerContextInterface } from '@/interfaces/MusicPlayerContext';
-import { PlaylistManager } from '@/constants/Playlists';
-
+import {MusicPlayerContextInterface} from '@/interfaces/MusicPlayerContext';
+import {PlaylistManager} from '@/constants/Playlists';
+import {TracksManager} from '@/constants/TracksManager';
 const MusicPlayerContext = createContext<
   MusicPlayerContextInterface | undefined
 >(undefined);
 
-export const MusicPlayerProvider = ({ children }: any) => {
+export const MusicPlayerProvider = ({children}: any) => {
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [queue, setQueue] = useState<Files[]>([]);
   const manager = new PlaylistManager();
+  const tracksManager = new TracksManager();
 
   const playTrack = async (trackIndex: number) => {
     const track = queue[trackIndex];
@@ -30,7 +31,7 @@ export const MusicPlayerProvider = ({ children }: any) => {
     if (!track.uri) {
       return;
     }
-    const { sound: newSound } = await Audio.Sound.createAsync({ uri: track.uri });
+    const {sound: newSound} = await Audio.Sound.createAsync({uri: track.uri});
     setSound(newSound);
     setCurrentTrackIndex(trackIndex);
     setIsPlaying(true);
@@ -69,11 +70,37 @@ export const MusicPlayerProvider = ({ children }: any) => {
     }
   };
 
+  const setQueueWithPlaylist = async (playlistId: string) => {
+    if (playlistId) {
+      const playlistTracks: string[] = await manager.getPlaylistSongs(playlistId);
+      const tracks: Files[] = await Promise.all(
+        playlistTracks.map(async (track: string) => await tracksManager.fetchTrack(track))
+      );
+      setQueue(tracks);
+    } else {
+      const allTracks = await tracksManager.getAudioFiles();
+      setQueue(allTracks);
+    }
+  };
 
+  const shuffleQueue = () => {
+    setQueue(prevQueue => {
+      const shuffledQueue = [...prevQueue];
+      for (let i = shuffledQueue.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledQueue[i], shuffledQueue[j]] = [
+          shuffledQueue[j],
+          shuffledQueue[i],
+        ];
+      }
+      return shuffledQueue;
+    });
+  };
 
   return (
     <MusicPlayerContext.Provider
       value={{
+        shuffleQueue,
         queue,
         currentTrackIndex,
         currentTrack: queue[currentTrackIndex],
@@ -83,7 +110,8 @@ export const MusicPlayerProvider = ({ children }: any) => {
         previousTrack,
         togglePlayback,
         stopPlayback,
-        isPlaying
+        isPlaying,
+        setQueueWithPlaylist,
       }}
     >
       {children}
@@ -96,8 +124,16 @@ export const useMusicPlayer = (): MusicPlayerContextInterface | undefined => {
   if (!context) {
     throw new Error('useMusicPlayer must be used within a MusicPlayerProvider');
   }
-  return {
-    ...context,
-    setQueue: context.setQueue, // Ensure you expose setQueue
-  };
+  return context;
 };
+// Playlist page
+// + add playknop
+// playknop stuur playlist id naar de audioplayer
+
+// Audioplayer
+
+// Als je audio in de queue will zetten
+// Check of er een playlist id is mee gegeven
+// nee = normale songs uit je hele lijst
+
+// ja = fetch alle songs van de playlist.

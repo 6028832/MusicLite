@@ -24,9 +24,8 @@ export default interface Files {
   modificationTime: number;
 
   albumId?: string | number;
-    
-  imageUrl?: string;
-  
-  artist: string;
 
+  imageUrl?: string | undefined;
+
+  artist: string;
 }

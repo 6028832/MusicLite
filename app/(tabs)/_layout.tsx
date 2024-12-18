@@ -4,10 +4,7 @@ import React, { useState } from 'react';
 import { TabBarIcon } from '@/components/navigation/TabBarIcon';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import {
-  MusicPlayerProvider,
-  useMusicPlayer,
-} from '@/components/context/AudioPlayer';
+import { MusicPlayerProvider } from '@/components/context/AudioPlayer';
 import MiniPlayer from '@/components/MiniPlayer';
 import FullScreenPlayer from '@/components/FullPlayer';
 
