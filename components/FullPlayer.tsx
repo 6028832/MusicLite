@@ -13,6 +13,7 @@ import { useMusicPlayer } from '@/components/context/AudioPlayer';
 import { useTheme } from '@react-navigation/native';
 import { MusicPlayerContextInterface } from '@/interfaces/MusicPlayerContext';
 import { fetchLyricsByFilename } from '@/constants/Fetchlyrics';
+import { GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler';
 
 
 const FullScreenPlayer = ({ isVisible, onClose }: { isVisible: boolean; onClose: () => void }) => {
@@ -42,6 +43,7 @@ const FullScreenPlayer = ({ isVisible, onClose }: { isVisible: boolean; onClose:
 
   return (
     <Modal visible={isVisible} animationType="slide" transparent={false}>
+      <GestureHandlerRootView>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         {/* Top of the full screen player */}
         <TouchableOpacity onPress={onClose} style={styles.backButton}>
@@ -67,7 +69,7 @@ const FullScreenPlayer = ({ isVisible, onClose }: { isVisible: boolean; onClose:
         </View>
 
         {/* Bottom of the full screen player */}
-        <View style={[styles.bottom, { backgroundColor: theme.colors.background }]}>
+        <ScrollView style={[styles.bottom, { backgroundColor: theme.colors.background }]}>
           <Text style={[styles.queueLyricsTitle, { color: theme.colors.text }]}>UP NEXT</Text>
           {/* Lyrics Display */}
           <View style={styles.lyricsContainer}>
@@ -77,7 +79,7 @@ const FullScreenPlayer = ({ isVisible, onClose }: { isVisible: boolean; onClose:
               <Text style={styles.lyrics}>{lyrics || 'No lyrics available'}</Text>
             )}
           </View>
-        </View>
+        </ScrollView>
 
         {/* Track Queue */}
         <FlatList
@@ -93,7 +95,9 @@ const FullScreenPlayer = ({ isVisible, onClose }: { isVisible: boolean; onClose:
           )}
         />
       </View>
+      </GestureHandlerRootView>
     </Modal>
+
   );
 };
 
