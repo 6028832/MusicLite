@@ -4,7 +4,7 @@ import React, {createContext, useState, useContext, useEffect} from 'react';
 import {Audio} from 'expo-av';
 import Files from '@/interfaces/Files';
 import {MusicPlayerContextInterface} from '@/interfaces/MusicPlayerContext';
-import {PlaylistManager} from '@/constants/Playlists';
+import {PlaylistManager} from '@/constants/PlaylistsManager';
 import {TracksManager} from '@/constants/TracksManager';
 const MusicPlayerContext = createContext<
   MusicPlayerContextInterface | undefined
@@ -70,6 +70,10 @@ export const MusicPlayerProvider = ({children}: any) => {
     }
   };
 
+  const removeFromQueue = async (fileName: string): Promise<void> => {
+    setQueue(prevQueue => prevQueue.filter(item => item.filename !== fileName));
+  }
+
   const setQueueWithPlaylist = async (playlistId: string) => {
     if (playlistId) {
       const playlistTracks: string[] = await manager.getPlaylistSongs(playlistId);
@@ -112,6 +116,7 @@ export const MusicPlayerProvider = ({children}: any) => {
         stopPlayback,
         isPlaying,
         setQueueWithPlaylist,
+        removeFromQueue,
       }}
     >
       {children}

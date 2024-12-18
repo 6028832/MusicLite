@@ -4,21 +4,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export class PlaylistManager {
   constructor() {}
 
-  async firstStart() {
-    const testArray = [
-      {name: 'test1', music: [], id: 's'},
-      {name: 'test2', music: [], id: 'ss'},
-      {name: 'test3', music: [], id: 'sss'},
-    ];
-
-    for (let playlist of testArray) {
-      this.save(playlist.id, playlist);
+  async firstBoot(forcedRestore: boolean = false) {
+    try {
+      const check = await this.getAllPlaylists();
+      if (check != null) {
+        if (forcedRestore) {
+          return;
+        } else {
+          check.forEach(async (item: any) => {
+            AsyncStorage.removeItem(item.infoId);
+          });
+          AsyncStorage.removeItem('allPlaylists');
+        }
+      }
+      this.save('allPlaylists', []);
+      this.firstBootFavorite();
+    } catch {
+      console.error(
+        'Martijn looked at my screen once during programming. Might result in numerous errors.'
+      );
     }
-
-    this.save(
-      'allPlaylists',
-      testArray.map(p => ({name: p.name, id: p.id}))
-    );
   }
 
   private async save(key: string, data: any) {
@@ -113,5 +118,37 @@ export class PlaylistManager {
       return [];
     }
     return playlist.music;
+  }
+
+  async firstBootFavorite() {
+    // new playlist
+    const data = {
+      name: 'Favorites',
+      id: 'Favorites',
+      music: [],
+    };
+
+    this.save(data.id, data);
+
+    // add to master list
+    let currentplaylists: object[] = await this.getAllPlaylists();
+    currentplaylists.push({
+      name: 'Favorites',
+      id: 'Favorites',
+    });
+
+    this.save('allPlaylists', currentplaylists);
+  }
+
+  async getFavoriteSongs(): Promise<string[]> {
+    return await this.getPlaylistSongs('Favorites');
+  }
+
+  async addToFavorite(fileName: string) {
+    await this.addToplaylist('Favorites', [fileName]);
+  }
+
+  async removeFromFavorite(fileName: string) {
+    await this.removeSong('Favorites', [fileName]);
   }
 }

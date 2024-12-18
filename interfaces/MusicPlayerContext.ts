@@ -26,4 +26,6 @@ export interface MusicPlayerContextInterface {
   isPlaying: boolean;
 
   setQueueWithPlaylist: (playlistId: string) => Promise<void>;
+  
+  removeFromQueue: (fileName: string) => Promise<void>;
 }

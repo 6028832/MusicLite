@@ -1,4 +1,4 @@
-import { PlaylistManager } from '@/constants/Playlists';
+import { PlaylistManager } from '@/constants/PlaylistsManager';
 import { SafeAreaView, ScrollView, StyleSheet, TextInput, Text, Button} from 'react-native';
 import { useState, useEffect } from 'react';
 import { MasterPlaylist } from '@/interfaces/MasterPlaylists';

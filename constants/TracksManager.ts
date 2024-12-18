@@ -17,12 +17,12 @@ export class TracksManager {
       const check = await this.getMasterList();
       if (check != null) {
         if (forcedRestore) {
-          return;
-        } else {
           check.forEach(async (item: any) => {
             AsyncStorage.removeItem(item.infoId);
           });
           AsyncStorage.removeItem('tracksMasterList');
+        } else {
+          return;
         }
       }
       this.save('tracksMasterList', []);

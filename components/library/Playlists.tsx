@@ -11,8 +11,9 @@ import {
   Button,
   View,
   Image,
+  Alert,
 } from 'react-native';
-import {PlaylistManager} from '@/constants/Playlists';
+import {PlaylistManager} from '@/constants/PlaylistsManager';
 import {MasterPlaylist} from '@/interfaces/MasterPlaylists';
 import {useTheme} from '@/hooks/useTheme';
 import {useContext} from 'react';
@@ -58,7 +59,7 @@ export default function Playlists() {
     } catch (error) {
       console.error(error);
       setPlaylists([]);
-      manager.firstStart();
+      manager.firstBoot();
     } finally {
       setLoading(false);
     }
@@ -156,7 +157,10 @@ export default function Playlists() {
   };
   const renderPlaylistDetails = () => {
     if (!selectedPlaylist) return null;
-
+    if (loading) {
+      return <Text style={[styles.loadingText, {color: theme.colors.text}]}>Loading playlist...</Text>;
+    } 
+ 
     return (
       <View>
         <Text style={[styles.albumTitle, {color: theme.colors.text}]}>
@@ -169,84 +173,106 @@ export default function Playlists() {
               if (selectedPlaylist?.id) {
                 setQueueWithPlaylist?.(selectedPlaylist.id);
                 if (playTrack) {
-                  playTrack(0)
+                  playTrack(0);
                 }
               }
             }}
           />
-        </TouchableOpacity>
-        <TouchableOpacity>
-          <Button
-            title="Delete"
-            onPress={() => {
-              if (selectedPlaylist?.id) {
-                deletePlaylist?.(selectedPlaylist.id);
-              }
-            }}
-          />
-        </TouchableOpacity>
-        {playlistSongs.length > 0 ? (
+          {selectedPlaylist.name !== 'Favorites' && (
+            <TouchableOpacity>
+              <Button
+                title="Delete"
+                onPress={() => {
+                  if (selectedPlaylist?.id) {
+                    deletePlaylist?.(selectedPlaylist.id);
+                  }
+                }}
+              />
+            </TouchableOpacity>
+          )}
+          {playlistSongs.length > 0 ? (
             <ScrollView>
-            {playlistSongs.map((song: string, index: number) => (
-              <TouchableOpacity
-              key={index}
-              style={styles.trackContainer}
-              >
-              {tracksInfo.map((item: Files, index: number) => (
-                <TouchableOpacity
-                key={index}
-                style={styles.trackContainer}
-                onPress={() => playTrack && playTrack(index)}
-                >
-                <View style={styles.trackDetails}>
-                  <View style={styles.imageContainer}>
-                  <Image
-                    source={{uri: item.imageUrl || placeholderImage}}
-                    style={styles.image}
-                  />
-                  </View>
+              {playlistSongs.map((song: string, index: number) => (
+                <TouchableOpacity key={index} style={styles.trackContainer}>
+                  {tracksInfo.map((item: Files, index: number) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.trackContainer}
+                      onPress={() => playTrack && playTrack(index)}
+                    >
+                      <View style={styles.trackDetails}>
+                        <View style={styles.imageContainer}>
+                          <Image
+                            source={{uri: item.imageUrl || placeholderImage}}
+                            style={styles.image}
+                          />
+                        </View>
 
-                  <View style={styles.textContainer}>
-                  <Text
-                    style={[
-                    styles.trackTitle,
-                    {color: theme.colors.text},
-                    ]}
-                  >
-                    {item.filename || 'Unknown Title'}
-                  </Text>
-                  <Text
-                    style={[
-                    styles.artistName,
-                    {color: theme.colors.text},
-                    ]}
-                  >
-                    {item.artist || 'Unknown Artist'}
-                  </Text>
-                  </View>
+                        <View style={styles.textContainer}>
+                          <Text
+                            style={[
+                              styles.trackTitle,
+                              {color: theme.colors.text},
+                            ]}
+                          >
+                            {item.filename || 'Unknown Title'}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.artistName,
+                              {color: theme.colors.text},
+                            ]}
+                          >
+                            {item.artist || 'Unknown Artist'}
+                          </Text>
+                        </View>
 
-                  <TouchableOpacity
-                      onPress={() =>
-                        removeTrackFromPlaylist(item.id, selectedPlaylist.id)}
-                  style={styles.settingsIconContainer}
-                  >
-                  <Image
-                    source={require('@/assets/images/settings.png')}
-                    style={styles.settingsIcon}
-                  />
-                  </TouchableOpacity>
-                </View>
+                        <TouchableOpacity
+                          onPress={() => {
+                            Alert.alert(
+                              'Remove Track',
+                              'Are you sure you want to remove this track from the playlist?',
+                              [
+                                {
+                                  text: 'Cancel',
+                                  style: 'cancel',
+                                },
+                                {
+                                  text: 'OK',
+                                  onPress: () => {
+                                    console.log(
+                                      `Removing track with ID: ${item.filename} from playlist with ID: ${selectedPlaylist.name}`
+                                    );
+                                    removeTrackFromPlaylist(
+                                      item.filename,
+                                      selectedPlaylist.id
+                                    );
+                                  },
+                                },
+                              ],
+                              {cancelable: false}
+                            );
+                          }}
+                          style={styles.settingsIconContainer}
+                        >
+                          <Image
+                            source={require('@/assets/images/settings.png')}
+                            style={styles.settingsIcon}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
                 </TouchableOpacity>
               ))}
-              </TouchableOpacity>
-            ))}
             </ScrollView>
-        ) : (
-          <Text style={[styles.text, {color: theme.colors.text}]}>
-            No songs available
-          </Text>
-        )}
-        <Button title="Back" onPress={() => setShowPlaylistDetails(false)} />
+          ) : (
+            <Text style={[styles.text, {color: theme.colors.text}]}>
+              No songs available
+            </Text>
+          )}
+          <Button title="Back" onPress={() => setShowPlaylistDetails(false)} />
+        </TouchableOpacity>
       </View>
     );
   };
@@ -265,6 +291,7 @@ export default function Playlists() {
               onPress={() => {
                 setShowPlaylistDetails(true);
                 setSelectedPlaylist(playlist);
+                console.log('Selected playlist:', playlist.name);
               }}
             >
               <>

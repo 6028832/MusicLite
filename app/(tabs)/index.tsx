@@ -8,12 +8,22 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-
+import {PlaylistManager} from '@/constants/PlaylistsManager';
+import {AlbumsManager} from '@/constants/AlbumsManager';
+import {TracksManager} from '@/constants/TracksManager';
 export default function Home() {
+  const playlistManager = new PlaylistManager();
+  const albumsManager = new AlbumsManager();
+  const tracksManager = new TracksManager();
+
+  playlistManager.firstBoot();
+  tracksManager.firstBoot();
+  albumsManager.firstBoot();
+
   return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Featured Albums</Text>
-      </View>
+    <View style={styles.container}>
+      <Text style={styles.title}>Featured Albums</Text>
+    </View>
   );
 }
 const styles = StyleSheet.create({

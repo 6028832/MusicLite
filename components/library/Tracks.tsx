@@ -17,7 +17,7 @@ import * as MediaLibrary from 'expo-media-library';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useTheme} from '@/hooks/useTheme';
 import Files from '@/interfaces/Files';
-import {PlaylistManager} from '@/constants/Playlists';
+import {PlaylistManager} from '@/constants/PlaylistsManager';
 import {TracksManager} from '@/constants/TracksManager';
 const GeniusAPI_BASE_URL = 'https://api.genius.com';
 
@@ -30,14 +30,14 @@ export const getApiCode = async () => {
 export default function Tracks() {
   const [tracks, setTracks] = useState<Files[]>([]);
   const [loading, setLoading] = useState(false);
+  const [geniusAccessToken, setGeniusAccessToken] = useState<string>('');
+  const [playlists, setPlaylists] = useState<any[]>([]);
+  const [showPlaylistsPopup, setShowPlaylistsPopup] = useState(false);
   const musicPlayer = useMusicPlayer();
   const theme = useTheme();
-  const [geniusAccessToken, setGeniusAccessToken] = useState<string>('');
   const playTrack = musicPlayer?.playTrack;
   const manager = new PlaylistManager();
   const tracksManager = new TracksManager();
-  const [playlists, setPlaylists] = useState<any[]>([]);
-  const [showPlaylistsPopup, setShowPlaylistsPopup] = useState(false);
   const placeholderImage = 'https://via.placeholder.com/100';
 
   interface PlaylistPopupProps {
@@ -191,7 +191,6 @@ export default function Tracks() {
     }
   }, [geniusAccessToken]);
 
-
   const addToPlaylist = async (playlistId: string, track: string) => {
     // tracks could possible become :string[] later, or in another function
     await manager.addToplaylist(playlistId, [track]);
@@ -302,6 +301,7 @@ export default function Tracks() {
           track={item.filename}
         />
       )}
+    
     </TouchableOpacity>
   );
 
@@ -309,6 +309,24 @@ export default function Tracks() {
     <Text style={styles.loadingText}>Loading tracks...</Text>
   ) : (
     <View style={styles.container}>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          onPress={() => musicPlayer?.playTrack(0)}
+          style={[styles.button, {backgroundColor: theme.colors.background}]}
+        >
+          <Text style={[styles.loadingText, {color: theme.colors.text}]}>
+            Play All
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => musicPlayer?.shuffleQueue()}
+          style={[styles.button, {backgroundColor: theme.colors.background}]}
+        >
+          <Text style={[styles.loadingText, {color: theme.colors.text}]}>
+            Shuffle
+          </Text>
+        </TouchableOpacity>
+      </View>
       <FlatList
         data={tracks}
         keyExtractor={(item, index) => index.toString()}
@@ -323,7 +341,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 10,
     paddingTop: 5,
-    paddingBottom: 50
+    paddingBottom: 50,
   },
   loadingText: {
     fontSize: 16,
@@ -370,6 +388,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  button: {
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderStyle: 'solid',
+    borderWidth: 1,
+    borderColor: '#ccc',
   },
 
   imageContainer: {
