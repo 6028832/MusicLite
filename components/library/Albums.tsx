@@ -30,7 +30,6 @@ export default function albums() {
     MasterAlbum | undefined | null
   >(null);
   const [loading, setLoading] = useState(true);
-  const [showCreateAlbum, setShowCreateAlbum] = useState(false);
   const [showAlbumDetails, setShowAlbumDetails] = useState(false);
   const [newAlbumName, setNewAlbumName] = useState('');
   const [albumSongs, setAlbumSongs] = useState<string[]>([]);
@@ -102,17 +101,6 @@ export default function albums() {
     }
   }, [albumSongs]);
 
-  const handleCreateAlbum = async () => {
-    if (newAlbumName.trim() && artist) {
-      await manager.createNewAlbum(newAlbumName, [], artist);
-      setNewAlbumName('');
-      setShowCreateAlbum(false);
-      fetchAlbums();
-    } else {
-      console.error('album name cannot be empty');
-    }
-  };
-
   const deleteAlbum = async (albumId: string) => {
     setLoading(true);
     try {
@@ -127,34 +115,6 @@ export default function albums() {
     }
   };
 
-  const renderCreatealbum = () => (
-    <View>
-      <TextInput
-        style={[styles.input, {color: theme.colors.text}]}
-        onChangeText={setNewAlbumName}
-        value={newAlbumName}
-        placeholder="Enter Album name"
-        placeholderTextColor={theme.colors.text}
-      />
-      <TextInput
-        style={[styles.input, {color: theme.colors.text}]}
-        onChangeText={setNewArtist}
-        value={artist}
-        placeholder="Enter Artist Name"
-        placeholderTextColor={theme.colors.text}
-      />
-      <Button
-        title="Create"
-        onPress={handleCreateAlbum}
-        color={theme.colors.text}
-      />
-      <Button
-        title="Cancel"
-        onPress={() => setShowCreateAlbum(false)}
-        color={theme.colors.text}
-      />
-    </View>
-  );
   const removeTrackFromalbum = async (songId: string, albumId: string) => {
     await manager.removeSong(albumId, [songId]);
   };
@@ -173,30 +133,35 @@ export default function albums() {
         <Text style={[styles.albumTitle, {color: theme.colors.text}]}>
           {selectedAlbum.name}
         </Text>
-        <TouchableOpacity>
-          <Button
-            title="Play all"
-            onPress={() => {
-              if (selectedAlbum?.id) {
-                setQueueWithAlbum?.(selectedAlbum.id);
-                if (playTrack) {
-                  playTrack(0);
-                }
+        <TouchableOpacity
+          onPress={() => {
+            if (selectedAlbum?.id) {
+              setQueueWithAlbum?.(selectedAlbum.id);
+              if (playTrack) {
+                playTrack(0);
               }
-            }}
-          />
-          {selectedAlbum.name !== 'Favorites' && (
-            <TouchableOpacity>
-              <Button
-                title="Delete"
+            }
+          }}
+        >
+          <View style={styles.buttonContainer}>
+            <Text style={[styles.button, {color: theme.colors.text}]}>
+              Play All
+            </Text>
+
+            {selectedAlbum.name !== 'Favorites' && (
+              <TouchableOpacity
                 onPress={() => {
                   if (selectedAlbum?.id) {
                     deleteAlbum?.(selectedAlbum.id);
                   }
                 }}
-              />
-            </TouchableOpacity>
-          )}
+              >
+                <Text style={[styles.button, {color: theme.colors.text}]}>
+                  Delete Album
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
           {albumSongs.length > 0 ? (
             <ScrollView>
               {albumSongs.map((song: string, index: number) => (
@@ -278,7 +243,11 @@ export default function albums() {
               No songs available
             </Text>
           )}
-          <Button title="Back" onPress={() => setShowAlbumDetails(false)} />
+          <TouchableOpacity onPress={() => setShowAlbumDetails(false)}>
+            <Text style={[styles.button, {color: theme.colors.text}]}>
+              Back
+            </Text>
+          </TouchableOpacity>
         </TouchableOpacity>
       </View>
     );
@@ -286,9 +255,6 @@ export default function albums() {
 
   const renderalbums = () => (
     <ScrollView>
-      <TouchableOpacity onPress={() => setShowCreateAlbum(true)}>
-        <Image source={{uri: placeholderImage}} style={styles.image} />
-      </TouchableOpacity>
       {albums.length > 0 ? (
         <View style={styles.albumGrid}>
           {albums.map((album: any) => (
@@ -309,10 +275,11 @@ export default function albums() {
                 <Text style={[styles.albumTitle, {color: theme.colors.text}]}>
                   {album.name}
                 </Text>
-                <Text style={[styles.text, {color: theme.colors.text}]}>
-                  {album.tracksNumber || 0} tracks
+                <Text
+                  style={[styles.albumSubTitle, {color: theme.colors.text}]}
+                >
+                  {album.artist} - {album.tracksNumber || 0} tracks
                 </Text>
-                <Text style={[styles.text, {color: theme.colors.text}]}></Text>
               </>
             </TouchableOpacity>
           ))}
@@ -333,9 +300,7 @@ export default function albums() {
         <Text style={[styles.loadingText, {color: theme.colors.text}]}>
           Loading albums...
         </Text>
-      ) : showCreateAlbum ? (
-        renderCreatealbum()
-      ) : showAlbumDetails ? (
+      )  : showAlbumDetails ? (
         renderalbumDetails()
       ) : (
         renderalbums()
@@ -377,6 +342,21 @@ const styles = StyleSheet.create({
   albumTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  albumSubTitle: {
+    fontSize: 14,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  button: {
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderStyle: 'solid',
+    borderWidth: 1,
+    borderColor: '#ccc',
   },
   image: {
     width: '100%',

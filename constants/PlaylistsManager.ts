@@ -79,7 +79,7 @@ export class PlaylistManager {
     this.save('allPlaylists', currentplaylists);
   }
 
-  async addToplaylist(playlistId: string, files: string[]) {
+  async addToPlaylist(playlistId: string, files: string[]) {
     let playlist = await this.fetch(playlistId);
     files.forEach(file => {
       if (!playlist.music.includes(file)) {
@@ -145,7 +145,7 @@ export class PlaylistManager {
   }
 
   async addToFavorite(fileName: string) {
-    await this.addToplaylist('Favorites', [fileName]);
+    await this.addToPlaylist('Favorites', [fileName]);
   }
 
   async removeFromFavorite(fileName: string) {

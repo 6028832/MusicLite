@@ -1,197 +1,384 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, FlatList, StyleSheet, Image, TouchableOpacity, Alert } from "react-native";
-import * as MediaLibrary from "expo-media-library";
-import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+/** @format */
 
-// Updated Artists component
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Modal,
+  FlatList,
+} from 'react-native';
+import { useMusicPlayer } from '@/components/context/AudioPlayer';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '@/hooks/useTheme';
+import Files from '@/interfaces/Files';
+import { PlaylistManager } from '@/constants/PlaylistsManager';
+import { TracksManager } from '@/constants/TracksManager';
+import { AlbumsManager } from '@/constants/AlbumsManager';
+const GeniusAPI_BASE_URL = 'https://api.genius.com';
+
+export const getApiCode = async () => {
+  const apiCode = (await AsyncStorage.getItem('apiCode')) || '';
+  console.log('Fetched API code from AsyncStorage:', apiCode);
+  return apiCode;
+};
+
 export default function Artists() {
-  const [artists, setArtists] = useState<{ name: string; songs: { title: string; imageUrl: string | null }[]; imageUrl: string | null }[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [geniusApiToken, setGeniusApiToken] = useState<string | null>(null); // State for the API token
-  const [selectedArtist, setSelectedArtist] = useState<string | null>(null); // State for the selected artist
+  const [tracks, setTracks] = useState<Files[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [filteredTracks, setFilteredTracks] = useState<Files[]>([]);
+  const musicPlayer = useMusicPlayer();
+  const theme = useTheme();
+  const [geniusAccessToken, setGeniusAccessToken] = useState<string>('');
+  const playTrack = musicPlayer?.playTrack;
+  const manager = new PlaylistManager();
+  const tracksManager = new TracksManager();
+  const albumsManager = new AlbumsManager(); // Initialize AlbumsManager
+  const [playlists, setPlaylists] = useState<any[]>([]);
+  const [showPlaylistsPopup, setShowPlaylistsPopup] = useState(false);
+  const [albums, setAlbums] = useState<any[]>([]); // State to store albums
+  const placeholderImage = 'https://via.placeholder.com/100';
 
-  // Fetch API token from AsyncStorage when the component mounts
-  useEffect(() => {
-    const fetchApiToken = async () => {
-      try {
-        const token = await AsyncStorage.getItem("apiCode");
-        if (token) {
-          setGeniusApiToken(token); // Set the token in the state
-        } else {
-          setError("API token not found.");
-        }
-      } catch (err) {
-        console.error("Error fetching API token:", err);
-        setError("Failed to retrieve API token.");
+  const fetchTrackInfo = async (trackTitle: string, artist: string) => {
+    console.log(`Fetching track info for: ${trackTitle} by ${artist}`);
+    try {
+      const searchTrack = async (query: string) => {
+        const response = await fetch(
+          `${GeniusAPI_BASE_URL}/search?q=${encodeURIComponent(query)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${geniusAccessToken}`,
+            },
+          }
+        );
+        const data = await response.json();
+        console.log('Genius API search result:', data);
+        return data.response.hits;
+      };
+
+      let hits = await searchTrack(trackTitle);
+      if (hits.length === 0) {
+        console.log('No track found, searching for artist...');
+        hits = await searchTrack(artist);
       }
-    };
 
-    fetchApiToken();
-  }, []);
+      if (hits.length === 0) {
+        console.warn('No track found for:', trackTitle, artist);
+        return { artist: 'Unknown Artist', imageUrl: '' };
+      }
 
-  useEffect(() => {
-    if (!geniusApiToken) return; // Don't fetch artists if token is not set
+      const hit = hits[0];
+      console.log(`Found track: ${trackTitle} by ${hit.result.primary_artist.name}`);
+      return {
+        artist: hit.result.primary_artist.name,
+        imageUrl: hit.result.primary_artist.image_url,
+      };
+    } catch (error) {
+      console.error('Error fetching Genius track info:', error);
+      return {
+        artist: 'Unknown Artist',
+        imageUrl: 'https://via.placeholder.com/100',
+      };
+    }
+  };
 
-    const fetchArtists = async () => {
-      const permission = await MediaLibrary.requestPermissionsAsync();
-      if (!permission.granted) {
-        setError("Media Library permission is required to access audio files.");
+  const getTracksFromLibrary = async () => {
+    setLoading(true);
+    console.log('Accessing media library...');
+    try {
+      const storedTracks = await AsyncStorage.getItem('savedTracks');
+      if (storedTracks) {
+        const parsedTracks = JSON.parse(storedTracks);
+        setTracks(parsedTracks);
+        setFilteredTracks(parsedTracks);
+        if (musicPlayer) {
+          musicPlayer.setQueue(parsedTracks);
+        }
+        console.log('Loaded tracks from AsyncStorage');
         setLoading(false);
         return;
       }
 
-      const cachedData = await loadFromCache();
-      if (cachedData) {
-        setArtists(cachedData);
-        setLoading(false);
-      }
+      tracksManager.firstBoot();
+      let assets: Files[] = await tracksManager.getAudioFiles();
 
-      try {
-        const audioFiles = await fetchAudioFiles();
-        if (audioFiles.length === 0) {
-          setError("No audio files found on the device.");
-          setLoading(false);
-          return;
-        }
+      console.log(`Found ${assets.length} audio files in library.`);
 
-        const artistMap: { [key: string]: { songs: { title: string; imageUrl: string | null }[] } } = {};
-        for (const file of audioFiles) {
-          const artist = await searchArtist(file.filename);
-          if (artist) {
-            if (!artistMap[artist.name]) artistMap[artist.name] = { songs: [] };
-            artistMap[artist.name].songs.push({ title: file.filename, imageUrl: artist.imageUrl });
+      let fetchAmount: number = 0;
+      let skipAmount: number = 0;
+      const tracksWithInfo: Files[] = await Promise.all(
+        assets.map(async (asset) => {
+          if (asset.imageUrl == '' || asset.imageUrl == undefined) {
+            let trackTitle = '';
+            let artist = '';
+            let name = asset.filename;
+
+            const match = asset.filename.match(/(.*?)(?:\s*\((.*?)\))?\.mp3/);
+
+            if (match) {
+              trackTitle = match[1].trim();
+              artist = match[2] ? match[2].trim() : '';
+            } else {
+              const parts = asset.filename.split(' - ').map((part) => part.trim());
+              trackTitle = parts[0];
+              artist = parts[1] || '';
+            }
+
+            const trackInfo = await fetchTrackInfo(trackTitle, artist);
+            await tracksManager.saveSong(name, {
+              albumId: asset.albumId ?? 0,
+              creationTime: asset.creationTime ?? 0,
+              duration: asset.duration ?? 'No data on duration',
+              filename: asset.filename ?? 'Unknown audio file',
+              height: asset.height ?? 0,
+              id: asset.id ?? 0,
+              mediaType: 'audio',
+              modificationTime: asset.modificationTime ?? 0,
+              uri: asset.uri,
+              width: asset.width ?? 0,
+              imageUrl: trackInfo.imageUrl ?? 'https://via.placeholder.com/100',
+              artist: trackInfo.artist ?? 'Unknown Artist',
+            });
+            fetchAmount++;
+            return { ...asset, ...trackInfo };
+          } else {
+            skipAmount++;
+            return { ...asset };
           }
-        }
+        })
+      );
 
-        const artistList = Object.entries(artistMap).map(([name, { songs }]) => ({
-          name,
-          songs,
-          imageUrl: songs[0]?.imageUrl || null
-        }));
-
-        setArtists(artistList);
-        await saveToCache(artistList); // Save to AsyncStorage
-      } catch (err) {
-        console.error(err);
-        setError("Failed to fetch artists or process audio files.");
-        setLoading(false);
+      console.log(
+        `fetched ${tracksWithInfo.length} track(s). ${fetchAmount} track(s) fetched and ${skipAmount} track(s) skipped`
+      );
+      setTracks(tracksWithInfo);
+      setFilteredTracks(tracksWithInfo); // Set filtered tracks when fetching new ones
+      await AsyncStorage.setItem('savedTracks', JSON.stringify(tracksWithInfo));
+      if (musicPlayer) {
+        musicPlayer.setQueue(tracksWithInfo);
       }
+    } catch (error) {
+      console.error('Error accessing media library:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAlbumsByArtist = async (artistName: string) => {
+    try {
+      const allAlbums = await albumsManager.getAllAlbums();
+      const artistAlbums = allAlbums.filter((album: any) => album.artist === artistName);
+      setAlbums(artistAlbums);
+    } catch (error) {
+      console.error('Error fetching albums:', error);
+    }
+  };
+
+  useEffect(() => {
+    const loadApiCode = async () => {
+      const apiCode = await getApiCode();
+      setGeniusAccessToken(apiCode);
+      console.log('Access token set:', apiCode);
     };
 
-    fetchArtists();
-  }, [geniusApiToken]); // Dependency on geniusApiToken
+    loadApiCode();
+  }, []);
 
-  const fetchAudioFiles = async () => {
-    const audioAssets: MediaLibrary.Asset[] = [];
-    let hasMore = true;
-    let after = undefined;
-
-    while (hasMore) {
-      const { assets, endCursor, hasNextPage } = await MediaLibrary.getAssetsAsync({
-        mediaType: MediaLibrary.MediaType.audio,
-        first: 50,
-        after,
-      });
-      audioAssets.push(...assets);
-      hasMore = hasNextPage;
-      after = endCursor;
+  useEffect(() => {
+    if (geniusAccessToken) {
+      console.log('Genius API token available. Fetching tracks...');
+      getTracksFromLibrary();
     }
+  }, [geniusAccessToken]);
 
-    return audioAssets.filter((asset) => asset.filename.endsWith(".mp3"));
+  // Add filtering functionality
+  const filterByArtist = (artistName: string) => {
+    const filtered = tracks.filter((track) => track.artist === artistName);
+    setFilteredTracks(filtered);
+    fetchAlbumsByArtist(artistName); // Fetch albums by artist
   };
 
-  const searchArtist = async (fileName: string): Promise<{ name: string; imageUrl: string | null } | null> => {
-    try {
-      const query = fileName.replace(".mp3", "");
-      const response = await axios.get("https://api.genius.com/search", {
-        headers: { Authorization: `Bearer ${geniusApiToken}` },
-        params: { q: query },
-      });
-
-      const hits = response.data.response.hits;
-      if (hits.length > 0) {
-        const artist = hits[0].result.primary_artist;
-        return { name: artist.name, imageUrl: artist.image_url || null };
-      } else {
-        return null;
-      }
-    } catch (err) {
-      console.error("Error querying Genius API:", err);
-      return null;
-    }
+  const addToPlaylist = async (playlistId: string, track: string) => {
+    await manager.addToPlaylist(playlistId, [track]);
+    setShowPlaylistsPopup(false);
   };
 
-  const saveToCache = async (data: any) => {
-    try {
-      await AsyncStorage.setItem("artistsData", JSON.stringify(data));
-    } catch (err) {
-      console.error("Error saving to cache:", err);
-    }
-  };
+  useEffect(() => {
+    const fetchPlaylists = async () => {
+      const playlistsData = await manager.getAllPlaylists();
+      setPlaylists(playlistsData);
+    };
+    fetchPlaylists();
+  }, []);
 
-  const loadFromCache = async () => {
-    try {
-      const cachedData = await AsyncStorage.getItem("artistsData");
-      if (cachedData) {
-        return JSON.parse(cachedData);
-      }
-      return null;
-    } catch (err) {
-      console.error("Error loading from cache:", err);
-      return null;
-    }
-  };
+  interface PlaylistPopupProps {
+    isVisible: boolean;
+    onClose: () => void;
+    playlists: any[];
+    track: string;
+  }
 
-  const toggleArtist = (artistName: string) => {
-    setSelectedArtist(selectedArtist === artistName ? null : artistName);
-  };
+  const PlaylistPopup: React.FC<PlaylistPopupProps> = ({
+    isVisible,
+    onClose,
+    playlists,
+    track,
+  }) => {
+    if (!isVisible) return null;
 
-  const renderArtist = ({ item }: { item: { name: string; songs: { title: string; imageUrl: string | null }[]; imageUrl: string | null } }) => (
-    <View style={styles.artistContainer}>
-      <TouchableOpacity onPress={() => toggleArtist(item.name)} style={styles.artistHeader}>
-        {item.imageUrl && <Image source={{ uri: item.imageUrl }} style={styles.albumImage} />}
-        <Text style={styles.artistName}>{item.name}</Text>
-        <Text style={styles.songCount}>{item.songs.length} Songs</Text>
-      </TouchableOpacity>
-      {selectedArtist === item.name && (
-        <View style={styles.songsContainer}>
-          {item.songs.map((song, index) => (
-            <View key={index} style={styles.songContainer}>
-              {song.imageUrl && <Image source={{ uri: song.imageUrl }} style={styles.songImage} />}
-              <Text style={styles.songTitle}>{song.title}</Text>
+    return (
+      <Modal visible={isVisible} transparent={true} animationType="slide">
+        <View
+          style={[
+            styles.modalContainer,
+            { backgroundColor: theme.colors.blackBackground },
+          ]}
+        >
+          <View
+            style={[styles.modalContent, { backgroundColor: theme.colors.background }]}
+          >
+            <View style={styles.playlistItem}>
+              <Text style={[styles.playlistTitle, { color: theme.colors.text }]}>
+                Save to Playlist
+              </Text>
+              <TouchableOpacity onPress={() => setShowPlaylistsPopup(false)}>
+                <Text style={[{ color: theme.colors.text }]}>Close</Text>
+              </TouchableOpacity>
             </View>
-          ))}
+            <Text style={[styles.playlistSubTitle, { color: theme.colors.text }]}>
+              All Playlists
+            </Text>
+            <ScrollView>
+              {Object.keys(groupedTracks).map((artist) => (
+                <View key={artist}>
+                  <Text style={[styles.artistName, { color: theme.colors.text, fontSize: 18, fontWeight: 'bold', marginVertical: 10 }]}>
+                    {artist}
+                  </Text>
+                  {albums.map((album) => renderAlbum(album))}
+                  {groupedTracks[artist].map((track, index) => (
+                    <View key={track.id}>
+                      {renderTrack({ item: track, index })}
+                    </View>
+                  ))}
+                </View>
+              ))}
+            </ScrollView>
+              {playlists.map((playlist) => (
+                <TouchableOpacity
+                  key={playlist.id}
+                  style={styles.playlistItem}
+                  onPress={() => addToPlaylist(playlist.id, track)}
+                >
+                  <Image source={playlist.imageUrl}></Image>
+                  <Text style={[styles.artistName, { color: theme.colors.text }]}>
+                    {playlist.name}
+                  </Text>
+                  <Text style={[styles.artistName, { color: theme.colors.text }]}>
+                    {playlist.tracksNumber || 0} Tracks
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+      </Modal>
+    );
+  };
+
+  const renderTrack = ({ item, index }: { item: Files; index: number }) => (
+    <TouchableOpacity
+      style={styles.trackContainer}
+      onPress={() => playTrack && playTrack(index)}
+    >
+      <View style={styles.trackDetails}>
+        <View style={styles.imageContainer}>
+          <Image
+            source={{ uri: item.imageUrl || placeholderImage }}
+            style={styles.image}
+          />
         </View>
+
+          <View style={styles.textContainer}>
+            <Text style={[styles.trackTitle, { color: theme.colors.text }]}>
+              {item.filename || 'Unknown Title'}
+            </Text>
+            <Text style={[styles.artistName, { color: theme.colors.text }]}>
+              {item.artist || 'Unknown Artist'}
+            </Text>
+          </View>
+      </View>
+
+      <TouchableOpacity
+          onPress={() => setShowPlaylistsPopup(true)}
+          style={styles.settingsIconContainer}
+        >
+          <Image
+            source={require('@/assets/images/settings.png')}
+            style={styles.settingsIcon}
+          />
+      </TouchableOpacity>
+      
+      {showPlaylistsPopup && (
+        <PlaylistPopup
+          isVisible={showPlaylistsPopup}
+          onClose={() => setShowPlaylistsPopup(false)}
+          playlists={playlists}
+          track={item.filename}
+        />
       )}
-    </View>
+    </TouchableOpacity>
   );
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading artists...</Text>
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error}</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      <FlatList
-        data={artists}
-        keyExtractor={(item) => item.name}
-        renderItem={renderArtist}
-        ListEmptyComponent={<Text>No artists found.</Text>}
+  const renderAlbum = (album: any) => (
+    <TouchableOpacity
+      key={album.id}
+      style={styles.albumContainer}
+      onPress={() => {
+        // Handle album click
+      }}
+    >
+      <Image
+        source={{ uri: album.imageUrl || placeholderImage }}
+        style={styles.image}
       />
+      <Text style={[styles.albumTitle, { color: theme.colors.text }]}>
+        {album.name}
+      </Text>
+      <Text style={[styles.text, { color: theme.colors.text }]}>
+        {album.tracksNumber || 0} tracks
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const groupedTracks = filteredTracks.reduce((acc, track) => {
+    if (!acc[track.artist]) {
+      acc[track.artist] = [];
+    }
+    acc[track.artist].push(track);
+    return acc;
+  }, {} as Record<string, Files[]>);
+
+  return loading ? (
+    <Text style={styles.loadingText}>Loading tracks...</Text>
+  ) : (
+    <View style={styles.container}>
+      <ScrollView>
+        {Object.keys(groupedTracks).map((artist) => (
+          <View key={artist}>
+            <Text style={[styles.artistName, { color: theme.colors.text, fontSize: 18, fontWeight: 'bold', marginVertical: 10 }]}>
+              {artist}
+            </Text>
+            {albums.map((album) => renderAlbum(album))}
+            {groupedTracks[artist].map((track, index) => (
+              <View key={track.id}>
+                {renderTrack({ item: track, index })}
+              </View>
+            ))}
+          </View>
+        ))}
+      </ScrollView>
     </View>
   );
 }
@@ -199,71 +386,102 @@ export default function Artists() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
-    padding: 20,
+    paddingBottom: 50,
   },
-  artistContainer: {
-    flexDirection: "column",
-    alignItems: "center",
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
-    marginBottom: 20,
+  artistFilterContainer: {
+    flexDirection: 'row',
+    padding: 10,
   },
-  artistHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+  artistFilter: {
+    marginRight: 10,
+    padding: 5,
+    borderRadius: 20,
+    backgroundColor: '#ff9900',
   },
-  albumImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 10,
+  artistFilterText: {
+    color: 'white',
   },
-  artistName: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#fff",
-    marginLeft: 10,
+  loadingText: {
+    color: 'white',
+    textAlign: 'center',
+    marginTop: '50%',
   },
-  songCount: {
-    fontSize: 14,
-    color: "#ddd",
-    marginLeft: 10,
+  trackContainer: {
+    flexDirection: 'row',
+    marginVertical: 10,
+    padding: 10,
+    backgroundColor: '#1e1e1e',
+    borderRadius: 10,
   },
-  songsContainer: {
-    marginTop: 10,
-    alignItems: "center",
+  trackDetails: {
+    flexDirection: 'row',
+    flex: 1,
   },
-  songContainer: {
-    alignItems: "center",
-    marginBottom: 10,
+  imageContainer: {
+    marginRight: 15,
   },
-  songImage: {
+  image: {
     width: 60,
     height: 60,
-    borderRadius: 30,
-    marginBottom: 5,
+    borderRadius: 10,
   },
-  songTitle: {
-    fontSize: 14,
-    color: "#ddd",
-  },
-  loadingContainer: {
+  textContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#ffcccc",
-    padding: 20,
-  },
-  errorText: {
-    color: "red",
+  trackTitle: {
     fontSize: 16,
-    textAlign: "center",
+    fontWeight: 'bold',
+  },
+  artistName: {
+    fontSize: 14,
+  },
+  settingsIconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settingsIcon: {
+    width: 30,
+    height: 30,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '80%',
+    padding: 20,
+    backgroundColor: 'white',
+    borderRadius: 10,
+  },
+  playlistItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  playlistTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  playlistSubTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  albumContainer: {
+    padding: 10,
+    marginBottom: 10,
+    borderRadius: 8,
+    width: '48%',
+  },
+  albumTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  text: {
+    fontSize: 18,
+    marginBottom: 10,
   },
 });

@@ -46,9 +46,7 @@ export default function Playlists() {
       const fetchedPlaylist: any[] = await manager.getAllPlaylists();
       const finalPlaylists = await Promise.all(
         fetchedPlaylist.map(async (list: any) => {
-          const fetchedList: string[] = await manager.getPlaylistSongs(
-            list.id
-          );
+          const fetchedList: string[] = await manager.getPlaylistSongs(list.id);
           return {
             ...list,
             tracksNumber: fetchedList.length,
@@ -90,7 +88,7 @@ export default function Playlists() {
       const fetchTracksInfo = async () => {
         try {
           const tracks = await Promise.all(
-            playlistSongs.map((songId) => tracksManager.fetchTrack(songId))
+            playlistSongs.map(songId => tracksManager.fetchTrack(songId))
           );
           setTracksInfo(tracks);
         } catch (error) {
@@ -137,16 +135,18 @@ export default function Playlists() {
         placeholder="Enter playlist name"
         placeholderTextColor={theme.colors.text}
       />
-      <Button
-        title="Create"
-        onPress={handleCreatePlaylist}
-        color={theme.colors.text}
-      />
-      <Button
-        title="Cancel"
-        onPress={() => setShowCreatePlaylist(false)}
-        color={theme.colors.text}
-      />
+      <View style={{flexDirection: 'row', justifyContent: 'space-around'}}>
+        <TouchableOpacity onPress={handleCreatePlaylist}>
+          <Text style={[styles.button, {color: theme.colors.text}]}>
+            Create
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setShowCreatePlaylist(false)}>
+          <Text style={[styles.button, {color: theme.colors.text}]}>
+            Cancel
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
   const removeTrackFromPlaylist = async (
@@ -158,17 +158,20 @@ export default function Playlists() {
   const renderPlaylistDetails = () => {
     if (!selectedPlaylist) return null;
     if (loading) {
-      return <Text style={[styles.loadingText, {color: theme.colors.text}]}>Loading playlist...</Text>;
-    } 
- 
+      return (
+        <Text style={[styles.loadingText, {color: theme.colors.text}]}>
+          Loading playlist...
+        </Text>
+      );
+    }
+
     return (
       <View>
         <Text style={[styles.albumTitle, {color: theme.colors.text}]}>
           {selectedPlaylist.name}
         </Text>
         <TouchableOpacity>
-          <Button
-            title="Play all"
+          <TouchableOpacity
             onPress={() => {
               if (selectedPlaylist?.id) {
                 setQueueWithPlaylist?.(selectedPlaylist.id);
@@ -177,7 +180,11 @@ export default function Playlists() {
                 }
               }
             }}
-          />
+          >
+            <Text style={[styles.button, {color: theme.colors.text}]}>
+              Cancel
+            </Text>
+          </TouchableOpacity>
           {selectedPlaylist.name !== 'Favorites' && (
             <TouchableOpacity>
               <Button
@@ -271,7 +278,11 @@ export default function Playlists() {
               No songs available
             </Text>
           )}
-          <Button title="Back" onPress={() => setShowPlaylistDetails(false)} />
+          <TouchableOpacity onPress={() => setShowPlaylistDetails(false)}>
+            <Text style={[styles.button, {color: theme.colors.text}]}>
+              Back
+            </Text>
+          </TouchableOpacity>
         </TouchableOpacity>
       </View>
     );
@@ -280,7 +291,10 @@ export default function Playlists() {
   const renderPlaylists = () => (
     <ScrollView>
       <TouchableOpacity onPress={() => setShowCreatePlaylist(true)}>
-        <Image source={{uri: placeholderImage}} style={styles.image} />
+        <Image
+          source={require('@/assets/images/add.png')}
+          style={styles.image}
+        />
       </TouchableOpacity>
       {playlists.length > 0 ? (
         <View style={styles.playlistGrid}>
@@ -366,6 +380,16 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderRadius: 8,
     width: '48%',
+  },
+  button: {
+    padding: 10,
+    textAlign: 'center',
+    borderStyle: 'solid',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    color: '#fff',
+    borderRadius: 8,
+    marginBottom: 10,
   },
   albumTitle: {
     fontSize: 18,

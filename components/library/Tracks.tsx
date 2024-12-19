@@ -19,6 +19,7 @@ import {useTheme} from '@/hooks/useTheme';
 import Files from '@/interfaces/Files';
 import {PlaylistManager} from '@/constants/PlaylistsManager';
 import {TracksManager} from '@/constants/TracksManager';
+import { AlbumsManager } from '@/constants/AlbumsManager';
 const GeniusAPI_BASE_URL = 'https://api.genius.com';
 
 export const getApiCode = async () => {
@@ -32,11 +33,15 @@ export default function Tracks() {
   const [loading, setLoading] = useState(false);
   const [geniusAccessToken, setGeniusAccessToken] = useState<string>('');
   const [playlists, setPlaylists] = useState<any[]>([]);
+  const [albums, setAlbums] = useState<any[]>([]);
   const [showPlaylistsPopup, setShowPlaylistsPopup] = useState(false);
+  const [showAlbumsPopup, setShowAlbumsPopup] = useState(false);
+  const [showSettingsPopup, setShowSettingsPopup] = useState(false);
   const musicPlayer = useMusicPlayer();
   const theme = useTheme();
   const playTrack = musicPlayer?.playTrack;
   const manager = new PlaylistManager();
+  const albumsManager = new AlbumsManager();
   const tracksManager = new TracksManager();
   const placeholderImage = 'https://via.placeholder.com/100';
 
@@ -193,9 +198,16 @@ export default function Tracks() {
 
   const addToPlaylist = async (playlistId: string, track: string) => {
     // tracks could possible become :string[] later, or in another function
-    await manager.addToplaylist(playlistId, [track]);
+    await manager.addToPlaylist(playlistId, [track]);
     setShowPlaylistsPopup(false);
   };
+
+    const addToAlbums = async (albumId: string, track: string) => {
+      // tracks could possible become :string[] later, or in another function
+      await albumsManager.addToAlbum(albumId, [track]);
+      setShowAlbumsPopup(false);
+  };
+  
   useEffect(() => {
     const fetchPlaylists = async () => {
       const playlistsData = await manager.getAllPlaylists();
@@ -204,12 +216,19 @@ export default function Tracks() {
     fetchPlaylists();
   }, []);
 
-  const PlaylistPopup: React.FC<PlaylistPopupProps> = ({
-    isVisible,
-    onClose,
-    playlists,
-    track,
-  }) => {
+    useEffect(() => {
+      const fetchAlbums = async () => {
+        const albumsData = await albumsManager.getAllAlbums();
+        setAlbums(albumsData);
+      };
+      fetchAlbums();
+    }, []);
+  
+  const SettingsPopup: React.FC<{
+    isVisible: boolean;
+    onClose: () => void;
+    onSelect: (option: string) => void;
+  }> = ({isVisible, onClose, onSelect}) => {
     if (!isVisible) return null;
 
     return (
@@ -226,103 +245,198 @@ export default function Tracks() {
               {backgroundColor: theme.colors.background},
             ]}
           >
-            <View style={styles.playlistItem}>
-              <Text style={[styles.playlistTitle, {color: theme.colors.text}]}>
-                Save to Playlist
-              </Text>
-              <TouchableOpacity onPress={() => setShowPlaylistsPopup(false)}>
-                <Text style={[{color: theme.colors.text}]}>Close</Text>
-              </TouchableOpacity>
-            </View>
-            <Text style={[styles.playlistSubTitle, {color: theme.colors.text}]}>
-              All Playlists
+            <Text style={[styles.modalTitle, {color: theme.colors.text}]}>
+              Options
             </Text>
-            <ScrollView>
-              {playlists.map(playlist => (
-                <TouchableOpacity
-                  key={playlist.id}
-                  style={styles.playlistItem}
-                  onPress={() => addToPlaylist(playlist.id, track)}
-                >
-                  <Image source={playlist.imageUrl}></Image>
-                  <Text style={[styles.artistName, {color: theme.colors.text}]}>
-                    {playlist.name}
-                  </Text>
-                  <Text style={[styles.artistName, {color: theme.colors.text}]}>
-                    {playlist.tracksNumber || 0} Tracks
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <TouchableOpacity onPress={() => onSelect('playlist')}>
+              <Text style={[styles.optionText, {color: theme.colors.text}]}>
+                Open Playlist
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => onSelect('album')}>
+              <Text style={[styles.optionText, {color: theme.colors.text}]}>
+                Open Album
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onClose}>
+              <Text style={[styles.closeText, {color: theme.colors.text}]}>
+                Close
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
     );
   };
 
-  const renderTrack = ({item, index}: {item: Files; index: number}) => (
-    <TouchableOpacity
-      style={styles.trackContainer}
-      onPress={() => playTrack && playTrack(index)}
-    >
-      <View style={styles.trackDetails}>
-        <View style={styles.imageContainer}>
-          <Image
-            source={{uri: item.imageUrl || placeholderImage}}
-            style={styles.image}
-          />
-        </View>
+    const handleCreateAlbum = async (track: Files) => {
+      const albumName = track.filename.split(' - ')[0];
+      const artist = track.artist || 'Unknown Artist';
+      await albumsManager.createNewAlbum(albumName, [track.filename], artist);
+      setShowAlbumsPopup(false);
+      Alert.alert('Album Created', `Album "${albumName}" by ${artist} created.`);
+    };
 
-        <View style={styles.textContainer}>
-          <Text style={[styles.trackTitle, {color: theme.colors.text}]}>
-            {item.filename || 'Unknown Title'}
-          </Text>
-          <Text style={[styles.artistName, {color: theme.colors.text}]}>
-            {item.artist || 'Unknown Artist'}
-          </Text>
-        </View>
+    const PlaylistOrAlbumPopup: React.FC<{
+      isVisible: boolean;
+      onClose: () => void;
+      playlists: any[];
+      albums: any[];
+      track: Files;
+      type: 'playlist' | 'album';
+    }> = ({isVisible, onClose, playlists, albums, track, type}) => {
+      if (!isVisible) return null;
 
-        <TouchableOpacity
-          onPress={() => setShowPlaylistsPopup(true)}
-          style={styles.settingsIconContainer}
-        >
-          <Image
-            source={require('@/assets/images/settings.png')}
-            style={styles.settingsIcon}
-          />
-        </TouchableOpacity>
+      const items = type === 'playlist' ? playlists : albums;
+      const addTo = type === 'playlist' ? addToPlaylist : addToAlbums;
+
+      return (
+        <Modal visible={isVisible} transparent={true} animationType="slide">
+          <View
+            style={[
+              styles.modalContainer,
+              {backgroundColor: theme.colors.blackBackground},
+            ]}
+          >
+            <View
+              style={[
+                styles.modalContent,
+                {backgroundColor: theme.colors.background},
+              ]}
+            >
+              <View style={styles.playlistItem}>
+                <Text style={[styles.playlistTitle, {color: theme.colors.text}]}>
+                  Save to {type === 'playlist' ? 'Playlist' : 'Album'}
+                </Text>
+                <TouchableOpacity onPress={onClose}>
+                  <Text style={[{color: theme.colors.text}]}>Close</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.playlistSubTitle, {color: theme.colors.text}]}>
+                All {type === 'playlist' ? 'Playlists' : 'Albums'}
+              </Text>
+              <ScrollView>
+                {items.map(item => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.playlistItem}
+                    onPress={() => addTo(item.id, track.filename)}
+                  >
+                    <Image source={{uri: item.imageUrl || placeholderImage}} style={styles.image} />
+                    <Text style={[styles.artistName, {color: theme.colors.text}]}>
+                      {item.name}
+                    </Text>
+                    <Text style={[styles.artistName, {color: theme.colors.text}]}>
+                      {item.tracksNumber || 0} Tracks
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              {type === 'album' && (
+                <TouchableOpacity
+                  style={styles.createAlbumButton}
+                  onPress={() => handleCreateAlbum(track)}
+                >
+                  <Text style={[styles.button, {color: theme.colors.text}]}>
+                    Create New Album
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </Modal>
+      );
+    };
+const renderTrack = ({item, index}: {item: Files; index: number}) => (
+  <TouchableOpacity
+    style={styles.trackContainer}
+    onPress={() => playTrack && playTrack(index)}
+  >
+    <View style={styles.trackDetails}>
+      <View style={styles.imageContainer}>
+        <Image
+          source={{uri: item.imageUrl || placeholderImage}}
+          style={styles.image}
+        />
+      </View>
+      <View style={styles.textContainer}>
+        <Text style={[styles.trackTitle, {color: theme.colors.text}]}>
+          {item.filename || 'Unknown Title'}
+        </Text>
+        <Text style={[styles.artistName, {color: theme.colors.text}]}>
+          {item.artist || 'Unknown Artist'}
+        </Text>
       </View>
 
-      {showPlaylistsPopup && (
-        <PlaylistPopup
-          isVisible={showPlaylistsPopup}
-          onClose={() => setShowPlaylistsPopup(false)}
-          playlists={playlists}
-          track={item.filename}
+      <TouchableOpacity
+        onPress={() => setShowSettingsPopup(true)}
+        style={styles.settingsIconContainer}
+      >
+        <Image
+          source={require('@/assets/images/settings.png')}
+          style={styles.settingsIcon}
         />
-      )}
-    
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    </View>
+
+    {showSettingsPopup && (
+      <SettingsPopup
+        isVisible={showSettingsPopup}
+        onClose={() => setShowSettingsPopup(false)}
+        onSelect={option => {
+          setShowSettingsPopup(false);
+          if (option === 'playlist') {
+            setShowPlaylistsPopup(true);
+          } else if (option === 'album') {
+            setShowAlbumsPopup(true);
+          } else if (option === 'sleeptime') {
+            console.log('Show lyrics');
+          }
+        }}
+      />
+    )}
+    {showPlaylistsPopup && (
+      <PlaylistOrAlbumPopup
+        isVisible={showPlaylistsPopup}
+        onClose={() => setShowPlaylistsPopup(false)}
+        playlists={playlists}
+        albums={[]}
+        track={item}
+        type="playlist"
+      />
+    )}
+    {showAlbumsPopup && (
+      <PlaylistOrAlbumPopup
+        isVisible={showAlbumsPopup}
+        onClose={() => setShowAlbumsPopup(false)}
+        playlists={[]}
+        albums={albums}
+        track={item}
+        type="album"
+      />
+    )}
+  </TouchableOpacity>
+);
 
   return loading ? (
     <Text style={styles.loadingText}>Loading tracks...</Text>
   ) : (
-    <View style={styles.container}>
+      <View style={styles.container}>
+      <Text style={[styles.playlistTitle, {color: theme.colors.text}]}>
+          | Tracks
+        </Text>
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           onPress={() => musicPlayer?.playTrack(0)}
-          style={[styles.button, {backgroundColor: theme.colors.background}]}
         >
-          <Text style={[styles.loadingText, {color: theme.colors.text}]}>
+          <Text style={[styles.button, {color: theme.colors.text}]}>
             Play All
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => musicPlayer?.shuffleQueue()}
-          style={[styles.button, {backgroundColor: theme.colors.background}]}
         >
-          <Text style={[styles.loadingText, {color: theme.colors.text}]}>
+          <Text style={[styles.button, {color: theme.colors.text}]}>
             Shuffle
           </Text>
         </TouchableOpacity>

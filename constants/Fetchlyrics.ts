@@ -37,7 +37,6 @@ export const fetchLyricsByFilename = async (filename: string): Promise<string> =
 
     return 'No lyrics found for this track.';
   } catch (error) {
-    console.error('Error fetching lyrics:', error);
     return 'Error fetching lyrics or resource not found.';
   }
 };
