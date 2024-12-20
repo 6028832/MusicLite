@@ -1,5 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import {Linking,SafeAreaView,View,Text,Image,StyleSheet,Modal,Switch,TextInput,Button,TouchableOpacity,ScrollView,} from 'react-native';
+import {
+  Linking,
+  SafeAreaView,
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  Modal,
+  Switch,
+  TextInput,
+  Button,
+  TouchableOpacity,
+  ScrollView,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/hooks/useTheme';
 import * as Notifications from 'expo-notifications';
@@ -11,6 +24,7 @@ export default function Header() {
   const [isApiEnabled, setIsApiEnabled] = useState(false);
   const [apiCode, setApiCode] = useState('');
   const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(false);
+  const [storageSize, setStorageSize] = useState<number>(0);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -23,6 +37,34 @@ export default function Header() {
     };
     loadSettings();
   }, []);
+
+  useEffect(() => {
+    calculateTotalAsyncStorageSize();
+  }, []);
+
+  const calculateTotalAsyncStorageSize = async (): Promise<void> => {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      if (!keys || keys.length === 0) {
+        setStorageSize(0);
+        return;
+      }
+
+      const data = await AsyncStorage.multiGet(keys);
+      const totalBytes = data.reduce((total, [_, value]) => {
+        if (value) {
+          total += new TextEncoder().encode(value).length;
+        }
+        return total;
+      }, 0);
+
+      const totalMB = totalBytes / (1024 * 1024);
+      setStorageSize(totalMB);
+    } catch (error) {
+      console.error('Error calculating AsyncStorage size:', error);
+      setStorageSize(0);
+    }
+  };
 
   const toggleApi = async () => {
     setIsApiEnabled((prev) => !prev);
@@ -43,7 +85,6 @@ export default function Header() {
     await AsyncStorage.setItem('notificationsEnabled', !isNotificationsEnabled ? '1' : '0');
     
     if (!isNotificationsEnabled) {
-      // persmissie notificatie
       const { status } = await Notifications.requestPermissionsAsync();
       if (status === 'granted') {
         await scheduleNotification();
@@ -52,7 +93,7 @@ export default function Header() {
       }
     }
   };
-  // onderste is een test notificatie
+
   const scheduleNotification = async () => {
     try {
       await Notifications.scheduleNotificationAsync({
@@ -61,14 +102,13 @@ export default function Header() {
           body: 'Check out the latest tracks in Music Lite!',
           data: { someData: 'goes here' },
         },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1 }, // hoe lang het duurt totdat de notificatie wordt getriggerd nadat je de app heb geopend in de achtergrond
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1 },
       });
       alert('Test notification scheduled!');
     } catch (error) {
       console.error('Failed to schedule notification:', error);
     }
   };
-  
 
   const renderTabContent = () => {
     switch (selectedTab) {
@@ -100,17 +140,17 @@ export default function Header() {
       case 'Notifications':
         return (
           <View style={styles.tabContentContainer}>
-          <View style={styles.settingRow}>
-            <Text style={[styles.label, { color: 'white' }]}>Notifications Enabled</Text>
-            <Switch value={isNotificationsEnabled} onValueChange={toggleNotifications} />
+            <View style={styles.settingRow}>
+              <Text style={[styles.label, { color: 'white' }]}>Notifications Enabled</Text>
+              <Switch value={isNotificationsEnabled} onValueChange={toggleNotifications} />
+            </View>
+            {isNotificationsEnabled ? (
+              <Text style={[styles.savedCode, { color: 'white' }]}>Notifications are enabled</Text>
+            ) : (
+              <Text style={[styles.savedCode, { color: 'white' }]}>Notifications are disabled</Text>
+            )}
+            <Button title="Test Notification" onPress={scheduleNotification} color={theme.colors.text} />
           </View>
-          {isNotificationsEnabled ? (
-            <Text style={[styles.savedCode, { color: 'white' }]}>Notifications are enabled</Text>
-          ) : (
-            <Text style={[styles.savedCode, { color: 'white' }]}>Notifications are disabled</Text>
-          )}
-          <Button title="Test Notification" onPress={scheduleNotification} color={theme.colors.text} />
-        </View>
         );
       case 'About':
         return (
@@ -138,16 +178,12 @@ export default function Header() {
             </Text>
           </View>
         );
-      case 'layout':
-        return (
-          <View style={styles.tabContentContainer}>
-            <Text style={[styles.tabContent, { color: 'white' }]}>Manage layout settings here.</Text>
-          </View>
-        );
       case 'Storage':
         return (
           <View style={styles.tabContentContainer}>
-            <Text style={[styles.tabContent, { color: 'white' }]}>Manage storage settings here.</Text>
+            <Text style={[styles.tabContent, { color: 'white' }]}>
+              Storage usage: {storageSize.toFixed(2)} MB
+            </Text>
           </View>
         );
       default:
@@ -156,26 +192,13 @@ export default function Header() {
   };
 
   return (
-    <View
-      style={[
-        styles.container,
-        {backgroundColor: theme.colors.blackBackground},
-      ]}
-    >
+    <View style={[styles.container, { backgroundColor: theme.colors.blackBackground }]}>
       <View style={styles.leftContainer}>
-        <Image
-          style={styles.image}
-          source={require('@/assets/images/react-logo.png')}
-        />
-        <Text style={[styles.title, {color: theme.colors.text}]}>
-          Music Lite
-        </Text>
+        <Image style={styles.image} source={require('@/assets/images/react-logo.png')} />
+        <Text style={[styles.title, { color: theme.colors.text }]}>Music Lite</Text>
       </View>
       <TouchableOpacity onPress={() => setIsSettingsVisible(true)}>
-        <Image
-          style={styles.icon}
-          source={require('@/assets/images/download.png')}
-        />
+        <Image style={styles.icon} source={require('@/assets/images/download.png')} />
       </TouchableOpacity>
 
       <Modal
@@ -184,43 +207,31 @@ export default function Header() {
         onRequestClose={() => setIsSettingsVisible(false)}
         transparent={false}
       >
-        <View
-          style={[
-            styles.modalContainer,
-            {backgroundColor: theme.colors.blackBackground},
-          ]}
-        >
+        <View style={[styles.modalContainer, { backgroundColor: theme.colors.blackBackground }]}>
           <View style={styles.navBar}>
             <TouchableOpacity onPress={() => setIsSettingsVisible(false)}>
-              <Image
-                style={styles.backIcon}
-                source={require('@/assets/images/back-arrow.png')}
-              />
+              <Image style={styles.backIcon} source={require('@/assets/images/back-arrow.png')} />
             </TouchableOpacity>
             <Text style={styles.navTitle}>{selectedTab} Settings</Text>
           </View>
           <View style={styles.settingsContent}>
             <View style={styles.tabContainer}>
-              {['General', 'Notifications', 'About', 'layout', 'Storage'].map(
-                tab => (
-                  <TouchableOpacity
-                    key={tab}
-                    onPress={() => setSelectedTab(tab)}
-                    style={[
-                      styles.tabButton,
-                      selectedTab === tab && {
-                        backgroundColor: theme.colors.text,
-                      },
-                    ]}
-                  >
-                    <Text style={styles.tabText}>{tab}</Text>
-                  </TouchableOpacity>
-                )
-              )}
+              {['General', 'Notifications', 'About', 'Storage'].map(tab => (
+                <TouchableOpacity
+                  key={tab}
+                  onPress={() => setSelectedTab(tab)}
+                  style={[
+                    styles.tabButton,
+                    selectedTab === tab && {
+                      backgroundColor: theme.colors.text,
+                    },
+                  ]}
+                >
+                  <Text style={styles.tabText}>{tab}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            <ScrollView style={styles.scrollContainer}>
-              {renderTabContent()}
-            </ScrollView>
+            <ScrollView style={styles.scrollContainer}>{renderTabContent()}</ScrollView>
           </View>
         </View>
       </Modal>
